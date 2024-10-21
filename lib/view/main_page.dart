@@ -3,7 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:soundify/database/database_helper.dart';
 import 'package:soundify/provider/widget_size_provider.dart';
 import 'package:soundify/provider/widget_state_provider_1.dart';
+import 'package:soundify/provider/widget_state_provider_2.dart';
 import 'package:soundify/view/container/bottom_container.dart';
+import 'package:soundify/view/container/primary/add_song_container.dart';
 import 'package:soundify/view/splash_screen.dart';
 import 'package:soundify/view/style/style.dart';
 import 'package:provider/provider.dart';
@@ -188,191 +190,192 @@ class _MainPageState extends State<MainPage> {
     );
   }
 
-  // OverlayEntry? _overlayEntry;
-  // void _showModal(BuildContext context) {
-  //   _overlayEntry = OverlayEntry(
-  //     builder: (context) => Stack(
-  //       children: [
-  //         // GestureDetector untuk mendeteksi klik di luar area modal
-  //         Positioned.fill(
-  //           child: GestureDetector(
-  //             onTap: () {
-  //               _closeModal(); // Tutup modal jika area luar modal diklik
-  //             },
-  //             child: Container(
-  //               color: Colors.transparent, // Area di luar modal transparan
-  //             ),
-  //           ),
-  //         ),
-  //         Positioned(
-  //           left: 12, // Posisi modal container
-  //           top: 120, // Posisi modal container
-  //           child: Material(
-  //             color: Colors.transparent,
-  //             child: Container(
-  //               width: 155, // Atur lebar container
-  //               height: 90, // Atur tinggi container
-  //               padding:
-  //                   const EdgeInsets.symmetric(vertical: 8.0, horizontal: 2.0),
-  //               decoration: BoxDecoration(
-  //                 color: tertiaryColor, // Background container
-  //                 borderRadius: BorderRadius.circular(4),
-  //                 boxShadow: [
-  //                   BoxShadow(
-  //                     color: Colors.black.withOpacity(0.3),
-  //                     blurRadius: 10,
-  //                     offset: const Offset(0, 5),
-  //                   ),
-  //                 ],
-  //               ),
-  //               child: Column(
-  //                 mainAxisSize: MainAxisSize.min,
-  //                 children: <Widget>[
-  //                   SizedBox(
-  //                     width: 200,
-  //                     child: TextButton(
-  //                       onPressed: () async {
-  //                         // Panggil fungsi untuk menyimpan data playlist
-  //                         await _submitPlaylistData(context);
-  //                         // Fetch the latest playlist
-  //                         var latestPlaylist;
-  //                         try {
-  //                           final playlistSnapshot = await FirebaseFirestore
-  //                               .instance
-  //                               .collection('playlists')
-  //                               .orderBy('playlistUserIndex', descending: true)
-  //                               .limit(1)
-  //                               .get();
+  OverlayEntry? _overlayEntry;
+  void _showModal(BuildContext context) {
+    _overlayEntry = OverlayEntry(
+      builder: (context) => Stack(
+        children: [
+          // GestureDetector untuk mendeteksi klik di luar area modal
+          Positioned.fill(
+            child: GestureDetector(
+              onTap: () {
+                _closeModal(); // Tutup modal jika area luar modal diklik
+              },
+              child: Container(
+                color: Colors.transparent, // Area di luar modal transparan
+              ),
+            ),
+          ),
+          Positioned(
+            left: 12, // Posisi modal container
+            top: 120, // Posisi modal container
+            child: Material(
+              color: Colors.transparent,
+              child: Container(
+                width: 155, // Atur lebar container
+                height: 90, // Atur tinggi container
+                padding:
+                    const EdgeInsets.symmetric(vertical: 8.0, horizontal: 2.0),
+                decoration: BoxDecoration(
+                  color: tertiaryColor, // Background container
+                  borderRadius: BorderRadius.circular(4),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.3),
+                      blurRadius: 10,
+                      offset: const Offset(0, 5),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: <Widget>[
+                    SizedBox(
+                      width: 200,
+                      child: TextButton(
+                        onPressed: () async {
+                          // // Panggil fungsi untuk menyimpan data playlist
+                          // await _submitPlaylistData(context);
+                          // // Fetch the latest playlist
+                          // var latestPlaylist;
+                          // try {
+                          //   final playlistSnapshot = await FirebaseFirestore
+                          //       .instance
+                          //       .collection('playlists')
+                          //       .orderBy('playlistUserIndex', descending: true)
+                          //       .limit(1)
+                          //       .get();
 
-  //                           if (playlistSnapshot.docs.isNotEmpty) {
-  //                             latestPlaylist =
-  //                                 playlistSnapshot.docs.first.data();
-  //                           }
-  //                         } catch (error) {
-  //                           print("Error fetching playlist: $error");
-  //                         }
-  //                         if (latestPlaylist != null) {
-  //                           var timestamp;
-  //                           if (latestPlaylist['timestamp'] != null &&
-  //                               latestPlaylist['timestamp'] is Timestamp) {
-  //                             timestamp =
-  //                                 (latestPlaylist['timestamp'] as Timestamp)
-  //                                     .toDate();
-  //                           } else {
-  //                             timestamp = DateTime
-  //                                 .now(); // fallback jika timestamp null atau bukan tipe Timestamp
-  //                           }
+                          //   if (playlistSnapshot.docs.isNotEmpty) {
+                          //     latestPlaylist =
+                          //         playlistSnapshot.docs.first.data();
+                          //   }
+                          // } catch (error) {
+                          //   print("Error fetching playlist: $error");
+                          // }
+                          // if (latestPlaylist != null) {
+                          //   var timestamp;
+                          //   if (latestPlaylist['timestamp'] != null &&
+                          //       latestPlaylist['timestamp'] is Timestamp) {
+                          //     timestamp =
+                          //         (latestPlaylist['timestamp'] as Timestamp)
+                          //             .toDate();
+                          //   } else {
+                          //     timestamp = DateTime
+                          //         .now(); // fallback jika timestamp null atau bukan tipe Timestamp
+                          //   }
 
-  //                           setState(() {
-  //                             Provider.of<PlaylistProvider>(context,
-  //                                     listen: false)
-  //                                 .updatePlaylist(
-  //                               latestPlaylist['playlistImageUrl'] ?? '',
-  //                               latestPlaylist['playlistName'] ??
-  //                                   'Untitled Playlist',
-  //                               latestPlaylist['playlistDescription'] ?? '',
-  //                               latestPlaylist['creatorId'] ?? '',
+                          //   setState(() {
+                          //     Provider.of<PlaylistProvider>(context,
+                          //             listen: false)
+                          //         .updatePlaylist(
+                          //       latestPlaylist['playlistImageUrl'] ?? '',
+                          //       latestPlaylist['playlistName'] ??
+                          //           'Untitled Playlist',
+                          //       latestPlaylist['playlistDescription'] ?? '',
+                          //       latestPlaylist['creatorId'] ?? '',
 
-  //                               latestPlaylist['playlistId'] ?? '',
-  //                               timestamp, // gunakan timestamp yang telah diperiksa
-  //                               latestPlaylist['playlistUserIndex'] ?? 0,
-  //                               latestPlaylist['songListIds'] ?? [],
-  //                               latestPlaylist['totalDuration'] ?? 0,
-  //                             );
+                          //       latestPlaylist['playlistId'] ?? '',
+                          //       timestamp, // gunakan timestamp yang telah diperiksa
+                          //       latestPlaylist['playlistUserIndex'] ?? 0,
+                          //       latestPlaylist['songListIds'] ?? [],
+                          //       latestPlaylist['totalDuration'] ?? 0,
+                          //     );
 
-  //                             Provider.of<WidgetStateProvider1>(context,
-  //                                     listen: false)
-  //                                 .changeWidget(
-  //                               PlaylistContainer(
-  //                                   playlistId: latestPlaylist['playlistId']),
-  //                               'PlaylistContainer',
-  //                             );
+                          //     Provider.of<WidgetStateProvider1>(context,
+                          //             listen: false)
+                          //         .changeWidget(
+                          //       PlaylistContainer(
+                          //           playlistId: latestPlaylist['playlistId']),
+                          //       'PlaylistContainer',
+                          //     );
 
-  //                             activeWidget2 = const ShowDetailSong();
-  //                           });
-  //                         }
+                          //     activeWidget2 = const ShowDetailSong();
+                          //   });
+                          // }
 
-  //                         // Close modal after action
-  //                         _closeModal();
-  //                       },
-  //                       child: const Row(
-  //                         children: [
-  //                           Icon(
-  //                             Icons.playlist_add,
-  //                             color: primaryTextColor,
-  //                           ),
-  //                           SizedBox(width: 12),
-  //                           Text(
-  //                             "Create Playlist",
-  //                             style: TextStyle(
-  //                               color: primaryTextColor,
-  //                               fontWeight: FontWeight.bold,
-  //                             ),
-  //                           ),
-  //                         ],
-  //                       ),
-  //                     ),
-  //                   ),
-  //                   const SizedBox(height: 8),
-  //                   SizedBox(
-  //                     width: 200,
-  //                     child: TextButton(
-  //                       onPressed: () {
-  //                         setState(() {
-  //                           Provider.of<WidgetStateProvider1>(context,
-  //                                   listen: false)
-  //                               .changeWidget(
-  //                             AddSongContainer(
-  //                               onChangeWidget: (newWidget) {
-  //                                 setState(() {
-  //                                   activeWidget2 =
-  //                                       newWidget; // Ganti widget aktif
-  //                                 });
-  //                               },
-  //                             ),
-  //                             'Add Song Container',
-  //                           );
+                          // // Close modal after action
+                          _closeModal();
+                        },
+                        child: const Row(
+                          children: [
+                            Icon(
+                              Icons.playlist_add,
+                              color: primaryTextColor,
+                            ),
+                            SizedBox(width: 12),
+                            Text(
+                              "Create Playlist",
+                              style: TextStyle(
+                                color: primaryTextColor,
+                                fontWeight: FontWeight.bold,
+                                fontSize: microFontSize,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      width: 200,
+                      child: TextButton(
+                        onPressed: () {
+                          setState(() {
+                            Provider.of<WidgetStateProvider1>(context,
+                                    listen: false)
+                                .changeWidget(
+                              AddSongContainer(
+                                onChangeWidget: (newWidget) {
+                                  setState(() {
+                                    activeWidget2 =
+                                        newWidget; // Ganti widget aktif
+                                  });
+                                },
+                              ),
+                              'Add Song Container',
+                            );
 
-  //                           activeWidget2 = const ShowDetailSong();
-  //                         });
-  //                         _closeModal(); // Tutup modal setelah action
-  //                       },
-  //                       child: const Row(
-  //                         children: [
-  //                           Icon(
-  //                             Icons.add,
-  //                             color: primaryTextColor,
-  //                           ),
-  //                           SizedBox(width: 12),
-  //                           Text(
-  //                             "Add Song",
-  //                             style: TextStyle(
-  //                               color: primaryTextColor,
-  //                               fontWeight: FontWeight.bold,
-  //                             ),
-  //                           ),
-  //                         ],
-  //                       ),
-  //                     ),
-  //                   ),
-  //                 ],
-  //               ),
-  //             ),
-  //           ),
-  //         ),
-  //       ],
-  //     ),
-  //   );
+                            // activeWidget2 = const ShowDetailSong();
+                          });
+                          _closeModal(); // Tutup modal setelah action
+                        },
+                        child: const Row(
+                          children: [
+                            Icon(
+                              Icons.add,
+                              color: primaryTextColor,
+                            ),
+                            SizedBox(width: 12),
+                            Text(
+                              "Add Song",
+                              style: TextStyle(
+                                color: primaryTextColor,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
 
-  //   Overlay.of(context).insert(_overlayEntry!); // Tampilkan overlay
-  // }
+    Overlay.of(context).insert(_overlayEntry!); // Tampilkan overlay
+  }
 
-  // void _closeModal() {
-  //   if (_overlayEntry != null) {
-  //     _overlayEntry!.remove(); // Hapus overlay
-  //     _overlayEntry = null;
-  //   }
-  // }
+  void _closeModal() {
+    if (_overlayEntry != null) {
+      _overlayEntry!.remove(); // Hapus overlay
+      _overlayEntry = null;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -461,12 +464,12 @@ class _MainPageState extends State<MainPage> {
                                             const Spacer(),
                                             InkWell(
                                               onTap: () {
-                                                // setState(() {
-                                                //   showModal =
-                                                //       true; // Menampilkan modal container
-                                                // });
-                                                // _showModal(
-                                                //     context); // Pastikan fungsi dipanggil
+                                                setState(() {
+                                                  showModal =
+                                                      true; // Menampilkan modal container
+                                                });
+                                                _showModal(
+                                                    context); // Pastikan fungsi dipanggil
                                               },
                                               child: const Icon(
                                                 Icons.add,
@@ -964,16 +967,16 @@ class _MainPageState extends State<MainPage> {
                                           borderRadius: BorderRadius.circular(
                                               20), // Membuat sudut melengkung
                                         ),
-                                        // child: Consumer<WidgetStateProvider2>(
-                                        //   builder: (context,
-                                        //       widgetStateProvider, child) {
-                                        //     // Mengambil currentWidget setiap kali state berubah
-                                        //     Widget activeWidget2 =
-                                        //         widgetStateProvider
-                                        //             .currentWidget;
-                                        //     return activeWidget2;
-                                        //   },
-                                        // ),
+                                        child: Consumer<WidgetStateProvider2>(
+                                          builder: (context,
+                                              widgetStateProvider, child) {
+                                            // Mengambil currentWidget setiap kali state berubah
+                                            Widget activeWidget2 =
+                                                widgetStateProvider
+                                                    .currentWidget;
+                                            return activeWidget2;
+                                          },
+                                        ),
                                       ),
                                     ),
                                   ],

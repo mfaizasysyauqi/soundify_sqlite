@@ -3,8 +3,8 @@ import 'dart:async';
 import 'package:provider/provider.dart';
 import 'package:soundify/provider/song_provider.dart';
 import 'package:soundify/view/style/style.dart';
-import 'package:just_audio/just_audio.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:audioplayers/audioplayers.dart';
 
 class BottomContainer extends StatefulWidget {
   const BottomContainer({super.key});
@@ -14,7 +14,7 @@ class BottomContainer extends StatefulWidget {
 }
 
 class _BottomContainerState extends State<BottomContainer> {
-  final AudioPlayer _audioPlayer = AudioPlayer();
+  final AudioPlayer _audioPlayer = AudioPlayer(); // This will now work
   double _currentPosition = 0.0;
   double _currentVolume = 0.5;
   bool _isPlaying = false;
@@ -48,14 +48,15 @@ class _BottomContainerState extends State<BottomContainer> {
   }
 
   void _setupAudioPlayerListeners() {
-    _audioPlayer.positionStream.listen((position) {
+    _audioPlayer.onPositionChanged.listen((position) {
       if (mounted) {
         setState(() => _currentPosition = position.inSeconds.toDouble());
       }
     });
 
-    _audioPlayer.playerStateStream.listen((playerState) {
-      if (mounted) setState(() => _isPlaying = playerState.playing);
+    _audioPlayer.onPlayerStateChanged.listen((playerState) {
+      if (mounted)
+        setState(() => _isPlaying = playerState == PlayerState.playing);
     });
   }
 
@@ -66,17 +67,17 @@ class _BottomContainerState extends State<BottomContainer> {
     }
 
     _currentSongUrl = newSongUrl;
-    await _audioPlayer.setUrl(newSongUrl);
-    await _audioPlayer.setLoopMode(LoopMode.one);
+    await _audioPlayer
+        .setSourceUrl(newSongUrl); // Update method for setting URL
+    await _audioPlayer
+        .setReleaseMode(ReleaseMode.loop); // Correct LoopMode to ReleaseMode
 
     setState(() {
       _currentPosition = 0.0;
-      // Don't set _isPlaying here, it will be set by _audioPlayer.play() if needed
     });
 
     if (shouldPlay) {
-      await _audioPlayer.play();
-      // _isPlaying will be set to true by the playerStateStream listener
+      await _audioPlayer.resume();
     }
   }
 
@@ -85,9 +86,8 @@ class _BottomContainerState extends State<BottomContainer> {
       if (_isPlaying) {
         await _audioPlayer.pause();
       } else {
-        await _audioPlayer.play();
+        await _audioPlayer.resume(); // Use resume instead of play
       }
-      // _isPlaying will be updated by the playerStateStream listener
     } catch (e) {
       print("Error toggling play/pause: $e");
     }
@@ -96,9 +96,9 @@ class _BottomContainerState extends State<BottomContainer> {
   // Fungsi untuk memutar lagu
   Future<void> _playSong(String songUrl) async {
     try {
-      await _audioPlayer.setUrl(songUrl);
-      await _audioPlayer.setLoopMode(LoopMode.one);
-      await _audioPlayer.play();
+      await _audioPlayer.setSourceUrl(songUrl);
+      await _audioPlayer.setReleaseMode(ReleaseMode.loop);
+      await _audioPlayer.resume();
 
       if (!mounted) return;
       setState(() {
@@ -121,7 +121,7 @@ class _BottomContainerState extends State<BottomContainer> {
         if (lastVolumeLevel is double) {
           _currentVolume = lastVolumeLevel;
         } else if (lastVolumeLevel is int) {
-          _currentVolume = lastVolumeLevel.toDouble(); // konversi ke double
+          _currentVolume = lastVolumeLevel.toDouble();
         }
         _audioPlayer.setVolume(_currentVolume);
       });
@@ -131,16 +131,14 @@ class _BottomContainerState extends State<BottomContainer> {
   Future<void> _toggleMute() async {
     try {
       if (_isMuted) {
-        // Unmute: set volume kembali ke nilai semula
         await _audioPlayer.setVolume(_currentVolume);
       } else {
-        // Mute: set volume ke 0
         await _audioPlayer.setVolume(0);
       }
 
       if (!mounted) return;
       setState(() {
-        _isMuted = !_isMuted; // Toggle status mute
+        _isMuted = !_isMuted;
       });
     } catch (e) {
       print("Error toggling mute: $e");
