@@ -1,7 +1,7 @@
 import 'dart:async';
-import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:soundify/database/file_storage_helper.dart';
 import 'package:soundify/provider/album_provider.dart';
 import 'package:soundify/provider/image_provider.dart';
 import 'package:soundify/provider/song_provider.dart';
@@ -236,25 +236,21 @@ class _AddSongContainerState extends State<AddSongContainer> {
     }
 
     try {
-      // Simpan file lagu ke local storage
-      String songFileName =
-          '${DateTime.now().millisecondsSinceEpoch}_${songFileNameController.text}';
-      String savedSongPath = await _saveFile(songPath!, songFileName, 'songs');
+      // Save song file to local storage
+      String savedSongPath = await _saveFile(songPath!, 'songs', 'song_file');
 
-      // Simpan file gambar ke local storage
-      String imageFileName =
-          '${DateTime.now().millisecondsSinceEpoch}_${songImageFileNameController.text}';
+      // Save image file to local storage
       String savedImagePath =
-          await _saveFile(imagePath!, imageFileName, 'song_images');
+          await _saveFile(imagePath!, 'song_images', 'song_image');
 
-      // Dapatkan artistFileIndex yang sesuai
+      // Get the appropriate artistFileIndex
       List<Song> existingSongs = await DatabaseHelper.instance.getSongs();
       int artistFileIndex = existingSongs
               .where((song) => song.artistId == artistIdController.text)
               .length +
           1;
 
-      // Buat objek Song baru
+      // Create new Song object
       Song newSong = Song(
         songId: DateTime.now().millisecondsSinceEpoch.toString(),
         senderId: senderId!,
@@ -272,7 +268,7 @@ class _AddSongContainerState extends State<AddSongContainer> {
         playedIds: [],
       );
 
-      // Insert lagu ke database
+      // Insert song into database
       await DatabaseHelper.instance.insertSong(newSong);
 
       // Update album
@@ -285,7 +281,10 @@ class _AddSongContainerState extends State<AddSongContainer> {
         await DatabaseHelper.instance.updateAlbum(album);
       }
 
-      // Reset form dan state setelah berhasil submit
+      // Update songs.json
+      await _updateSongsJson(newSong);
+
+      // Reset form and state after successful submission
       _resetForm();
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -298,7 +297,7 @@ class _AddSongContainerState extends State<AddSongContainer> {
       Provider.of<SongProvider>(context, listen: false).resetArtistId();
       Provider.of<AlbumProvider>(context, listen: false).resetAlbumId();
 
-      // Ganti widget ke detail song
+      // Change widget to show detail song
       Provider.of<WidgetStateProvider2>(context, listen: false)
           .changeWidget(const ShowDetailSong(), 'ShowDetailSong');
     } catch (e) {
@@ -309,17 +308,67 @@ class _AddSongContainerState extends State<AddSongContainer> {
     }
   }
 
-// Fungsi untuk menyimpan file lokal (baik untuk audio maupun gambar)
+  Future<void> _updateSongsJson(Song newSong) async {
+    try {
+      final fileHelper = FileStorageHelper.instance;
+      Map<String, dynamic>? songData = await fileHelper.readData('songs.json');
+      if (songData == null) {
+        songData = {'songs': []};
+      }
+
+      List<dynamic> songs = songData['songs'];
+      songs.add({
+        'songId': newSong.songId,
+        'senderId': newSong.senderId,
+        'artistId': newSong.artistId,
+        'songTitle': newSong.songTitle,
+        'songImageUrl': newSong.songImageUrl,
+        'songUrl': newSong.songUrl,
+        'songDuration': newSong.songDuration.inSeconds,
+        'timestamp': newSong.timestamp.toIso8601String(),
+        'albumId': newSong.albumId,
+        'artistSongIndex': newSong.artistSongIndex,
+        'likeIds': newSong.likeIds,
+        'playlistIds': newSong.playlistIds,
+        'albumIds': newSong.albumIds,
+        'playedIds': newSong.playedIds,
+      });
+
+      await fileHelper.writeData('songs.json', songData);
+    } catch (e) {
+      print('Error updating songs.json: $e');
+    }
+  }
+
   Future<String> _saveFile(
-      String filePath, String fileName, String folderName) async {
+      String filePath, String folderName, String filePrefix) async {
     final directory = await getApplicationDocumentsDirectory();
-    final folderPath = '${directory.path}/$folderName';
-    final newFilePath = '$folderPath/$fileName';
+    final folderPath = '${directory.path}/soundify_database/$folderName';
 
-    final file = File(filePath);
-    await file.copy(newFilePath);
+    // Create the folder if it doesn't exist
+    final folder = Directory(folderPath);
+    if (!await folder.exists()) {
+      await folder.create(recursive: true);
+    }
 
-    return newFilePath;
+    // Extract just the file name from the full path
+    final originalFileName = path.basename(filePath);
+
+    // Create a new file name using the timestamp, prefix, and original file name
+    final newFileName =
+        '${DateTime.now().millisecondsSinceEpoch}_${filePrefix}_$originalFileName';
+
+    final newFilePath = path.join(folderPath, newFileName);
+
+    try {
+      // Copy the file
+      final file = File(filePath);
+      await file.copy(newFilePath);
+      return newFilePath;
+    } catch (e) {
+      print('Error copying file: $e');
+      rethrow;
+    }
   }
 
   void _resetForm() {

@@ -49,15 +49,15 @@ void main() async {
   await windowManager.ensureInitialized();
 
   // Set minimum size for the window
-  windowManager.setMinimumSize(const Size(600, 550));
+  windowManager.setMinimumSize(const Size(820, 550));
 
   // Prevent window from being resized smaller than the minimum size
   windowManager.setResizable(true);
 
   // print("Running MyApp...");
 
-  // await DatabaseHelper.instance.clearAllData();
-  // print("Semua data pengguna telah dihapus.");
+  await DatabaseHelper.instance.clearAllData();
+  print("Semua data pengguna telah dihapus.");
 
   // Gunakan MultiProvider di sini dengan provider terpisah
   runApp(
