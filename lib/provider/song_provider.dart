@@ -140,8 +140,8 @@ class SongProvider with ChangeNotifier {
       // Update SQLite
       User? currentUser = await _databaseHelper.getCurrentUser();
       if (currentUser != null) {
-        User updatedUser = currentUser.copyWith(lastVolumeLevel: volume);
-        int result = await _databaseHelper.updateUser(updatedUser);
+        // User updatedUser = currentUser.copyWith(lastVolumeLevel: volume);
+        // int result = await _databaseHelper.updateUser(updatedUser);
 
         // Update JSON file
         await FileStorageHelper.instance.updateJsonWithLatestUser();

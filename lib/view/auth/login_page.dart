@@ -16,9 +16,10 @@ class _LoginPageState extends State<LoginPage> {
   final emailController = TextEditingController();
   final passwordController = TextEditingController();
   final dbHelper = DatabaseHelper.instance;
-  bool _isHovered1 = false;
-  bool _isHovered2 = false;
-  bool _isHovered3 = false;
+  
+  bool _isHoveredEmail = false;
+  bool _isHoveredPassword = false;
+  bool _isHoveredLoginButton = false;
 
   void clearTextFields() {
     emailController.clear();
@@ -106,10 +107,10 @@ class _LoginPageState extends State<LoginPage> {
                 padding: const EdgeInsets.only(top: 20.0),
                 child: MouseRegion(
                   onEnter: (event) => setState(() {
-                    _isHovered1 = true;
+                    _isHoveredEmail = true;
                   }),
                   onExit: (event) => setState(() {
-                    _isHovered1 = false;
+                    _isHoveredEmail = false;
                   }),
                   child: TextFormField(
                     style: const TextStyle(color: primaryTextColor),
@@ -130,7 +131,7 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                       enabledBorder: OutlineInputBorder(
                         borderSide: BorderSide(
-                          color: _isHovered1 ? secondaryColor : senaryColor,
+                          color: _isHoveredEmail ? secondaryColor : senaryColor,
                         ),
                       ),
                     ),
@@ -141,10 +142,10 @@ class _LoginPageState extends State<LoginPage> {
                 padding: const EdgeInsets.only(top: 20.0),
                 child: MouseRegion(
                   onEnter: (event) => setState(() {
-                    _isHovered2 = true;
+                    _isHoveredPassword = true;
                   }),
                   onExit: (event) => setState(() {
-                    _isHovered2 = false;
+                    _isHoveredPassword = false;
                   }),
                   child: TextFormField(
                     style: const TextStyle(color: primaryTextColor),
@@ -166,7 +167,7 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                       enabledBorder: OutlineInputBorder(
                         borderSide: BorderSide(
-                          color: _isHovered2 ? secondaryColor : senaryColor,
+                          color: _isHoveredPassword ? secondaryColor : senaryColor,
                         ),
                       ),
                     ),
@@ -177,10 +178,10 @@ class _LoginPageState extends State<LoginPage> {
                 padding: const EdgeInsets.only(top: 20.0),
                 child: MouseRegion(
                   onEnter: (event) => setState(() {
-                    _isHovered3 = true;
+                    _isHoveredLoginButton = true;
                   }),
                   onExit: (event) => setState(() {
-                    _isHovered3 = false;
+                    _isHoveredLoginButton = false;
                   }),
                   child: SizedBox(
                     height: 42,
@@ -188,12 +189,12 @@ class _LoginPageState extends State<LoginPage> {
                       onPressed: login,
                       style: ElevatedButton.styleFrom(
                         backgroundColor:
-                            _isHovered3 ? secondaryColor : tertiaryColor,
+                            _isHoveredLoginButton ? secondaryColor : tertiaryColor,
                       ),
                       child: Text(
                         "Login",
                         style: TextStyle(
-                          color: _isHovered3 ? tertiaryColor : secondaryColor,
+                          color: _isHoveredLoginButton ? tertiaryColor : secondaryColor,
                           fontWeight: FontWeight.bold,
                         ),
                       ),

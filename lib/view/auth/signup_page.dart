@@ -20,6 +20,12 @@ class _SignUpPageState extends State<SignUpPage> {
   final passwordController = TextEditingController();
   final dbHelper = DatabaseHelper.instance;
 
+  bool _isHoveredEmail = false;
+  bool _isHoveredPassword = false;
+  bool _isHoveredFullName = false;
+  bool _isHoveredUsername = false;
+  bool _isHoveredSignUpButton = false;
+
   Future<void> signUp() async {
     if (!validateFields()) {
       return;
@@ -175,114 +181,174 @@ class _SignUpPageState extends State<SignUpPage> {
             ),
             Padding(
               padding: const EdgeInsets.only(top: 20.0),
-              child: TextFormField(
-                style: const TextStyle(color: primaryTextColor),
-                controller: emailController,
-                decoration: const InputDecoration(
-                  contentPadding: EdgeInsets.all(8),
-                  hintText: 'Enter your email',
-                  hintStyle: TextStyle(color: primaryTextColor),
-                  border: OutlineInputBorder(
-                    borderSide: BorderSide(
-                      color: primaryTextColor,
+              child: MouseRegion(
+                onEnter: (event) => setState(() {
+                  _isHoveredEmail = true;
+                }),
+                onExit: (event) => setState(() {
+                  _isHoveredEmail = false;
+                }),
+                child: TextFormField(
+                  style: const TextStyle(color: primaryTextColor),
+                  controller: emailController,
+                  decoration: InputDecoration(
+                    contentPadding: const EdgeInsets.all(8),
+                    hintText: 'Enter your email',
+                    hintStyle: const TextStyle(color: primaryTextColor),
+                    border: const OutlineInputBorder(
+                      borderSide: const BorderSide(
+                        color: primaryTextColor,
+                      ),
+                    ),
+                    focusedBorder: const OutlineInputBorder(
+                      borderSide: BorderSide(
+                        color: secondaryColor,
+                      ),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderSide: BorderSide(
+                        color: _isHoveredEmail ? secondaryColor : senaryColor,
+                      ),
                     ),
                   ),
-                  focusedBorder: OutlineInputBorder(
-                    borderSide: BorderSide(
-                      color: primaryTextColor,
-                    ),
-                  ),
-                  hoverColor: primaryTextColor,
-                  focusColor: primaryTextColor,
                 ),
               ),
             ),
             Padding(
               padding: const EdgeInsets.only(top: 20.0),
-              child: TextFormField(
-                style: const TextStyle(color: primaryTextColor),
-                controller: passwordController,
-                obscureText: true,
-                decoration: const InputDecoration(
-                  contentPadding: EdgeInsets.all(8),
-                  hintText: 'Enter your password',
-                  hintStyle: TextStyle(color: primaryTextColor),
-                  border: OutlineInputBorder(
-                    borderSide: BorderSide(
-                      color: primaryTextColor,
+              child: MouseRegion(
+                onEnter: (event) => setState(() {
+                  _isHoveredPassword = true;
+                }),
+                onExit: (event) => setState(() {
+                  _isHoveredPassword = false;
+                }),
+                child: TextFormField(
+                  style: const TextStyle(color: primaryTextColor),
+                  controller: passwordController,
+                  obscureText: true,
+                  decoration: InputDecoration(
+                    contentPadding: const EdgeInsets.all(8),
+                    hintText: 'Enter your password',
+                    hintStyle: const TextStyle(color: primaryTextColor),
+                    border: const OutlineInputBorder(
+                      borderSide: BorderSide(
+                        color: primaryTextColor,
+                      ),
+                    ),
+                    focusedBorder: const OutlineInputBorder(
+                      borderSide: BorderSide(
+                        color: secondaryColor,
+                      ),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderSide: BorderSide(
+                        color:
+                            _isHoveredPassword ? secondaryColor : senaryColor,
+                      ),
                     ),
                   ),
-                  focusedBorder: OutlineInputBorder(
-                    borderSide: BorderSide(
-                      color: primaryTextColor,
-                    ),
-                  ),
-                  hoverColor: primaryTextColor,
-                  focusColor: primaryTextColor,
                 ),
               ),
             ),
             Padding(
               padding: const EdgeInsets.only(top: 20.0),
-              child: TextFormField(
-                style: const TextStyle(color: primaryTextColor),
-                controller: fullNameController,
-                decoration: const InputDecoration(
-                  contentPadding: EdgeInsets.all(8),
-                  hintText: 'Enter your full name',
-                  hintStyle: TextStyle(color: primaryTextColor),
-                  border: OutlineInputBorder(
-                    borderSide: BorderSide(
-                      color: primaryTextColor,
+              child: MouseRegion(
+                onEnter: (event) => setState(() {
+                  _isHoveredFullName = true;
+                }),
+                onExit: (event) => setState(() {
+                  _isHoveredFullName = false;
+                }),
+                child: TextFormField(
+                  style: const TextStyle(color: primaryTextColor),
+                  controller: fullNameController,
+                  decoration: InputDecoration(
+                    contentPadding: const EdgeInsets.all(8),
+                    hintText: 'Enter your full name',
+                    hintStyle: const TextStyle(color: primaryTextColor),
+                    border: const OutlineInputBorder(
+                      borderSide: BorderSide(
+                        color: primaryTextColor,
+                      ),
+                    ),
+                    focusedBorder: const OutlineInputBorder(
+                      borderSide: BorderSide(
+                        color: secondaryColor,
+                      ),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderSide: BorderSide(
+                        color:
+                            _isHoveredFullName ? secondaryColor : senaryColor,
+                      ),
                     ),
                   ),
-                  focusedBorder: OutlineInputBorder(
-                    borderSide: BorderSide(
-                      color: primaryTextColor,
-                    ),
-                  ),
-                  hoverColor: primaryTextColor,
-                  focusColor: primaryTextColor,
                 ),
               ),
             ),
             Padding(
               padding: const EdgeInsets.only(top: 20.0),
-              child: TextFormField(
-                style: const TextStyle(color: primaryTextColor),
-                controller: usernameController,
-                decoration: const InputDecoration(
-                  contentPadding: EdgeInsets.all(8),
-                  hintText: 'Enter your username',
-                  hintStyle: TextStyle(color: primaryTextColor),
-                  border: OutlineInputBorder(
-                    borderSide: BorderSide(
-                      color: primaryTextColor,
+              child: MouseRegion(
+                onEnter: (event) => setState(() {
+                  _isHoveredUsername = true;
+                }),
+                onExit: (event) => setState(() {
+                  _isHoveredUsername = false;
+                }),
+                child: TextFormField(
+                  style: const TextStyle(color: primaryTextColor),
+                  controller: usernameController,
+                  decoration: InputDecoration(
+                    contentPadding: const EdgeInsets.all(8),
+                    hintText: 'Enter your username',
+                    hintStyle: const TextStyle(color: primaryTextColor),
+                    border: const OutlineInputBorder(
+                      borderSide: BorderSide(
+                        color: primaryTextColor,
+                      ),
+                    ),
+                    focusedBorder: const OutlineInputBorder(
+                      borderSide: BorderSide(
+                        color: secondaryColor,
+                      ),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderSide: BorderSide(
+                        color:
+                            _isHoveredUsername ? secondaryColor : senaryColor,
+                      ),
                     ),
                   ),
-                  focusedBorder: OutlineInputBorder(
-                    borderSide: BorderSide(
-                      color: primaryTextColor,
-                    ),
-                  ),
-                  hoverColor: primaryTextColor,
-                  focusColor: primaryTextColor,
                 ),
               ),
             ),
             Padding(
               padding: const EdgeInsets.only(top: 20.0),
-              child: SizedBox(
-                height: 42,
-                child: ElevatedButton(
-                  onPressed: signUp,
-                  style: ElevatedButton.styleFrom(
-                      backgroundColor: tertiaryColor),
-                  child: const Text(
-                    "Sign up",
-                    style: TextStyle(
-                      color: secondaryColor,
-                      fontWeight: FontWeight.bold,
+              child: MouseRegion(
+                onEnter: (event) => setState(() {
+                  _isHoveredSignUpButton = true;
+                }),
+                onExit: (event) => setState(() {
+                  _isHoveredSignUpButton = false;
+                }),
+                child: SizedBox(
+                  height: 42,
+                  child: ElevatedButton(
+                    onPressed: signUp,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _isHoveredSignUpButton
+                          ? secondaryColor
+                          : tertiaryColor,
+                    ),
+                    child: Text(
+                      "Sign up",
+                      style: TextStyle(
+                        color: _isHoveredSignUpButton
+                            ? tertiaryColor
+                            : secondaryColor,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                 ),
@@ -306,7 +372,9 @@ class _SignUpPageState extends State<SignUpPage> {
                   child: const Text(
                     "Login",
                     style: TextStyle(
-                        fontWeight: FontWeight.bold, color: secondaryColor),
+                      fontWeight: FontWeight.bold,
+                      color: secondaryColor,
+                    ),
                   ),
                 ),
               ],
