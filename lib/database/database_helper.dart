@@ -199,7 +199,7 @@ class DatabaseHelper {
     return null;
   }
 
-  // Get all songs
+// Get all songs
   Future<List<Song>> getSongs() async {
     Database db = await instance.database;
     final List<Map<String, dynamic>> maps = await db.query('songs');
@@ -216,8 +216,8 @@ class DatabaseHelper {
         song.bioImageUrl = artist.bioImageUrl;
       }
 
-      // Get album details
-      Album? album = await getAlbumByCreatorId(song.artistId);
+      // Get album details using albumId instead of artistId
+      Album? album = await getAlbumById(song.albumId); // Updated here
       if (album != null) {
         song.albumName = album.albumName;
       }
@@ -226,6 +226,26 @@ class DatabaseHelper {
     }
 
     return songs;
+  }
+
+// Define method to get album by albumId
+  Future<Album?> getAlbumById(String? albumId) async {
+    Database db = await instance.database;
+
+    // Query the album where albumId matches
+    final List<Map<String, dynamic>> maps = await db.query(
+      'albums',
+      where: 'albumId = ?',
+      whereArgs: [albumId],
+    );
+
+    // Check if the result is not empty and return the first album found
+    if (maps.isNotEmpty) {
+      return Album.fromMap(maps.first);
+    }
+
+    // Return null if no album is found
+    return null;
   }
 
   // Get song by ID
@@ -267,6 +287,66 @@ class DatabaseHelper {
   Future<int> deleteSong(String id) async {
     Database db = await instance.database;
     return await db.delete('songs', where: 'songId = ?', whereArgs: [id]);
+  }
+
+  Future<bool> toggleSongLike(String songId, String userId) async {
+    Database db = await instance.database;
+
+    // Get current song
+    Song? song = await getSongById(songId);
+    // Get current user
+    User? user = await getUserById(userId);
+
+    if (song == null || user == null) {
+      return false;
+    }
+
+    // Handle the case when likeIds or userLikedSongs is null
+    List<String> songLikeIds = song.likeIds ?? [];
+    List<String> userLikedSongs = user.userLikedSongs;
+
+    bool isCurrentlyLiked = songLikeIds.contains(userId);
+
+    try {
+      await db.transaction((txn) async {
+        // Update song's likeIds
+        List<String> updatedLikeIds = List<String>.from(songLikeIds);
+        if (isCurrentlyLiked) {
+          updatedLikeIds.remove(userId);
+        } else {
+          updatedLikeIds.add(userId);
+        }
+
+        // Update song record
+        await txn.update(
+          'songs',
+          {'likeIds': updatedLikeIds.join(',')},
+          where: 'songId = ?',
+          whereArgs: [songId],
+        );
+
+        // Update user's liked songs
+        List<String> updatedUserLikedSongs = List<String>.from(userLikedSongs);
+        if (isCurrentlyLiked) {
+          updatedUserLikedSongs.remove(songId);
+        } else {
+          updatedUserLikedSongs.add(songId);
+        }
+
+        // Update user record
+        await txn.update(
+          'users',
+          {'userLikedSongs': updatedUserLikedSongs.join(',')},
+          where: 'userId = ?',
+          whereArgs: [userId],
+        );
+      });
+
+      return !isCurrentlyLiked; // Return new like status
+    } catch (e) {
+      print('Error toggling like status: $e');
+      return isCurrentlyLiked; // Return original status if error occurs
+    }
   }
 
   // **************************** CRUD Operations for Playlists ****************************
@@ -574,9 +654,11 @@ class DatabaseHelper {
   }
 
   // Get liked songs
+// Get liked songs
   Future<List<Song>> getLikedSongs(String userId) async {
     Database db = await instance.database;
     final user = await getUserById(userId);
+
     if (user != null && user.userLikedSongs.isNotEmpty) {
       final List<Map<String, dynamic>> maps = await db.query(
         'songs',
@@ -584,15 +666,33 @@ class DatabaseHelper {
         whereArgs: user.userLikedSongs,
       );
 
-      return List.generate(maps.length, (i) {
-        return Song.fromMap(maps[i]);
-      });
+      List<Song> likedSongs = [];
+      for (var map in maps) {
+        Song song = Song.fromMap(map);
+
+        // Get artist details
+        User? artist = await getUserByArtistId(song.artistId);
+        if (artist != null) {
+          song.artistName = artist.fullName;
+          song.profileImageUrl = artist.profileImageUrl;
+          song.bioImageUrl = artist.bioImageUrl;
+        }
+
+        // Get album details using albumId instead of artistId
+        Album? album = await getAlbumById(song.albumId); // Updated here
+        if (album != null) {
+          song.albumName = album.albumName;
+        }
+
+        likedSongs.add(song);
+      }
+
+      return likedSongs;
     }
     return [];
   }
 
   // Update User
-  // DatabaseHelper.dart
   Future<int> updateUser(User user) async {
     final db = await database;
     int result = await db.update(

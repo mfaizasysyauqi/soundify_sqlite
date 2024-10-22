@@ -7,6 +7,7 @@ import 'package:soundify/provider/widget_state_provider_2.dart';
 import 'package:soundify/view/container/bottom_container.dart';
 import 'package:soundify/view/container/primary/add_song_container.dart';
 import 'package:soundify/view/container/primary/home_container.dart';
+import 'package:soundify/view/container/primary/liked_song_container.dart';
 import 'package:soundify/view/container/secondary/show_detail_song.dart';
 import 'package:soundify/view/splash_screen.dart';
 import 'package:soundify/view/style/style.dart';
@@ -14,11 +15,11 @@ import 'package:provider/provider.dart';
 import 'package:soundify/view/widget/song_list.dart';
 
 class MainPage extends StatefulWidget {
-  // final activeWidget1;
-  // final activeWidget2;
-  // const MainPage(
-  //     {super.key, required this.activeWidget1, required this.activeWidget2});
-  const MainPage({super.key});
+  final activeWidget1;
+  final activeWidget2;
+  const MainPage(
+      {super.key, required this.activeWidget1, required this.activeWidget2});
+
   @override
   State<MainPage> createState() => _MainPageState();
 }
@@ -217,8 +218,6 @@ class _MainPageState extends State<MainPage> {
             child: Material(
               color: Colors.transparent,
               child: Container(
-                width: 155, // Atur lebar container
-                height: 90, // Atur tinggi container
                 padding:
                     const EdgeInsets.symmetric(vertical: 8.0, horizontal: 2.0),
                 decoration: BoxDecoration(
@@ -233,10 +232,10 @@ class _MainPageState extends State<MainPage> {
                   ],
                 ),
                 child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: <Widget>[
-                    SizedBox(
-                      width: 200,
+                    IntrinsicWidth(
                       child: TextButton(
                         onPressed: () async {
                           // // Panggil fungsi untuk menyimpan data playlist
@@ -312,18 +311,16 @@ class _MainPageState extends State<MainPage> {
                             Text(
                               "Create Playlist",
                               style: TextStyle(
-                                color: primaryTextColor,
-                                fontWeight: FontWeight.bold,
-                                fontSize: microFontSize,
-                              ),
+                                  color: primaryTextColor,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: smallFontSize),
                             ),
                           ],
                         ),
                       ),
                     ),
                     const SizedBox(height: 8),
-                    SizedBox(
-                      width: 200,
+                    IntrinsicWidth(
                       child: TextButton(
                         onPressed: () {
                           setState(() {
@@ -451,12 +448,12 @@ class _MainPageState extends State<MainPage> {
                                           children: [
                                             InkWell(
                                               onTap: () {
-                                                // setState(() {
-                                                //   showModal =
-                                                //       true; // Menampilkan modal container
-                                                // });
-                                                // _showModal(
-                                                //     context); // Pastikan fungsi dipanggil
+                                                setState(() {
+                                                  showModal =
+                                                      true; // Menampilkan modal container
+                                                });
+                                                _showModal(
+                                                    context); // Pastikan fungsi dipanggil
                                               },
                                               child: const Text(
                                                 'Menu',
@@ -506,16 +503,16 @@ class _MainPageState extends State<MainPage> {
                                                     onTap: () {
                                                       setState(
                                                         () {
-                                                          // Provider.of<WidgetStateProvider1>(
-                                                          //         context,
-                                                          //         listen: false)
-                                                          //     .changeWidget(
-                                                          //   const LikedSongContainer(),
-                                                          //   'Liked Song Container',
-                                                          // );
+                                                          Provider.of<WidgetStateProvider1>(
+                                                                  context,
+                                                                  listen: false)
+                                                              .changeWidget(
+                                                            const LikedSongContainer(),
+                                                            'Liked Song Container',
+                                                          );
 
-                                                          // activeWidget2 =
-                                                          //     const ShowDetailSong();
+                                                          activeWidget2 =
+                                                              const ShowDetailSong();
                                                         },
                                                       );
                                                     },

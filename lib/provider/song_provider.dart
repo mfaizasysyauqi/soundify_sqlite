@@ -141,8 +141,8 @@ class SongProvider with ChangeNotifier {
       User? currentUser = await _databaseHelper.getCurrentUser();
       if (currentUser != null) {
         User updatedUser = currentUser.copyWith(lastVolumeLevel: volume);
-        // ignore: unused_local_variable
-        int result = await _databaseHelper.updateUser(updatedUser);
+
+        await _databaseHelper.updateUser(updatedUser);
 
         // Update JSON file
         await FileStorageHelper.instance.updateJsonWithLatestUser();

@@ -3,7 +3,7 @@ import 'package:soundify/database/database_helper.dart';
 import 'package:soundify/models/user.dart';
 import 'package:soundify/provider/auth_provider.dart';
 import 'package:soundify/view/auth/signup_page.dart';
-import 'package:soundify/view/main_page.dart';
+import 'package:soundify/view/splash_screen.dart';
 import 'package:soundify/view/style/style.dart';
 import 'package:provider/provider.dart';
 
@@ -63,7 +63,9 @@ class _LoginPageState extends State<LoginPage> {
 
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => const MainPage()),
+          MaterialPageRoute(
+            builder: (context) => const SplashScreen(),
+          ),
         );
         clearTextFields();
       } else {

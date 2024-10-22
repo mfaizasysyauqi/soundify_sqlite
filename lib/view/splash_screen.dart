@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:soundify/view/auth/login_page.dart';
+import 'package:soundify/view/container/primary/home_container.dart';
+import 'package:soundify/view/container/secondary/show_detail_song.dart';
 import 'package:soundify/view/main_page.dart';
 import 'package:soundify/view/style/style.dart';
 import 'package:soundify/database/database_helper.dart';
@@ -23,14 +25,20 @@ class _SplashScreenState extends State<SplashScreen> {
 
     final dbHelper = DatabaseHelper.instance;
     final user = await dbHelper.getCurrentUser();
+    print('User: $user'); // Cek apakah user berhasil diambil
 
     if (user != null) {
-      // User is logged in, navigate to MainPage
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (context) => const MainPage()),
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const MainPage(
+            activeWidget1: HomeContainer(),
+            activeWidget2: ShowDetailSong(),
+          ),
+        ),
       );
     } else {
-      // No logged in user, go to LoginPage
+      print('Navigating to LoginPage');
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(builder: (context) => const LoginPage()),
       );

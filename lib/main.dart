@@ -41,6 +41,7 @@ void main() async {
   try {
     print("Initializing Database...");
     await dbHelper.database; // Ensure database is initialized
+    await dbHelper.getUsers();
     print("Database initialized successfully");
   } catch (e) {
     print('Error initializing database: $e');

@@ -34,12 +34,9 @@ class _ShowImageState extends State<ShowImage> {
                           borderRadius: BorderRadius.circular(4),
                           child: AspectRatio(
                             aspectRatio: 1, // Set rasio 1:1 agar gambar tetap kotak
-                            child: InteractiveViewer(
-                              scaleEnabled: false,
-                              child: Image.file(
-                                File(imageProvider.imagePath!), // Gunakan File untuk gambar dari path
-                                fit: BoxFit.cover, // Pastikan gambar memenuhi container
-                              ),
+                            child: Image.file(
+                              File(imageProvider.imagePath!), // Gunakan File untuk gambar dari path
+                              fit: BoxFit.cover, // Pastikan gambar memenuhi container
                             ),
                           ),
                         ),

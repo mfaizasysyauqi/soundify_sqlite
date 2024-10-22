@@ -18,13 +18,13 @@ class SongList extends StatefulWidget {
   final String playlistId;
   final String albumId;
 
-  SongList({
-    Key? key,
+  const SongList({
+    super.key,
     required this.userId,
     required this.pageName,
     required this.playlistId,
     required this.albumId,
-  }) : super(key: key);
+  });
 
   @override
   State<SongList> createState() => _SongListState();
@@ -154,8 +154,14 @@ class _SongListState extends State<SongList> {
         Song song = displayedSongs[index];
         String formattedDate = DateFormat('MMM d, yyyy').format(song.timestamp);
 
+        // Menggunakan index terbalik untuk widget index
+        int reversedIndex = displayedSongs.length - 1 - index;
+        // Menambahkan original ascending index
+        int ascendingIndex = index;
+
         return SongListItem(
-          index: index,
+          index: reversedIndex,
+          originalIndex: ascendingIndex,
           songId: song.songId,
           senderId: song.senderId,
           songTitle: song.songTitle,
@@ -173,7 +179,7 @@ class _SongListState extends State<SongList> {
           likedIds: song.likeIds,
           playlistIds: song.playlistIds,
           timestamp: song.timestamp,
-          isClicked: _clickedIndex == index,
+          isClicked: _clickedIndex == reversedIndex,
           onItemTapped: (int tappedIndex) {
             setState(() {
               _clickedIndex = tappedIndex;
@@ -190,6 +196,7 @@ class _SongListState extends State<SongList> {
 // Widget terpisah untuk setiap item
 class SongListItem extends StatefulWidget {
   final int index;
+  final int originalIndex;
   final String songId;
   final String senderId;
   final String songTitle;
@@ -214,6 +221,7 @@ class SongListItem extends StatefulWidget {
   const SongListItem({
     super.key,
     required this.index,
+    required this.originalIndex,
     required this.songId,
     required this.senderId,
     required this.songTitle,
@@ -407,7 +415,9 @@ class _SongListItemState extends State<SongListItem> {
     return SizedBox(
       width: 35,
       child: Text(
-        widget.index + 1 > 1000 ? "𝅗𝅥" : '${widget.index + 1}',
+        widget.originalIndex + 1 > 1000
+            ? "𝅗𝅥"
+            : '${widget.originalIndex + 1}',
         textAlign: TextAlign.right,
         style: const TextStyle(
           color: primaryTextColor,
@@ -525,7 +535,11 @@ class _SongListItemState extends State<SongListItem> {
                     size: smallFontSize,
                   ),
                   onTap: () {
-                    // Handle like button press
+                    if (!mounted) return;
+                    setState(() {
+                      _isLiked = !_isLiked; // Toggle the value of _isLiked
+                      _onLikedChanged(_isLiked); // Update Firestore
+                    });
                   },
                 ),
               )
@@ -561,6 +575,31 @@ class _SongListItemState extends State<SongListItem> {
         ),
       ),
     );
+  } // In your widget class, replace the _onLikedChanged method with:
+
+  void _onLikedChanged(bool isLiked) async {
+    // Get current user from DatabaseHelper
+    User? currentUser = await DatabaseHelper.instance.getCurrentUser();
+
+    if (currentUser == null) {
+      print('No user logged in');
+      return;
+    }
+
+    try {
+      bool newLikeStatus = await DatabaseHelper.instance.toggleSongLike(
+        widget.songId,
+        currentUser.userId,
+      );
+
+      // Update UI if needed
+      setState(() {
+        // Update local state to reflect new like status
+        _isLiked = newLikeStatus;
+      });
+    } catch (e) {
+      print('Error updating likes: $e');
+    }
   }
 
   String _formatDuration(Duration duration) {
