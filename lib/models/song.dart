@@ -17,6 +17,11 @@ class Song {
   late List<String>? albumIds;
   late List<String>? playedIds;
 
+  String? artistName;
+  String? albumName;
+  String? profileImageUrl;
+  String? bioImageUrl;
+
   Song({
     required this.songId,
     required this.senderId,

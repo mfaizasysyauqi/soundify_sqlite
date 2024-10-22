@@ -8,12 +8,12 @@ class SongProvider with ChangeNotifier {
   String _senderId = '';
   String _artistId = '';
   String _songTitle = '';
-  String _profileImageUrl = '';
+  String? _profileImageUrl = '';
   String _songImageUrl = '';
-  String _bioImageUrl = '';
-  String _artistName = '';
+  String? _bioImageUrl = '';
+  String? _artistName = '';
   String _songUrl = '';
-  int _duration = 0;
+  Duration _songDuration = Duration.zero;
   bool _isPlaying = false;
   bool _shouldPlay = false;
 
@@ -28,12 +28,12 @@ class SongProvider with ChangeNotifier {
   String get senderId => _senderId;
   String get artistId => _artistId;
   String get songTitle => _songTitle;
-  String get profileImageUrl => _profileImageUrl;
+  String? get profileImageUrl => _profileImageUrl;
   String get songImageUrl => _songImageUrl;
-  String get bioImageUrl => _bioImageUrl;
-  String get artistName => _artistName;
+  String? get bioImageUrl => _bioImageUrl;
+  String? get artistName => _artistName;
   String get songUrl => _songUrl;
-  int get duration => _duration;
+  Duration get songDuration => _songDuration;
   bool get isPlaying => _isPlaying;
   bool get shouldPlay => _shouldPlay;
 
@@ -43,12 +43,12 @@ class SongProvider with ChangeNotifier {
     String senderId,
     String artistId,
     String title,
-    String profileImageUrl,
+    String? profileImageUrl,
     String songImageUrl,
-    String bioImageUrl,
-    String artist,
+    String? bioImageUrl,
+    String? artistName,
     String songUrl,
-    int duration,
+    Duration songDuration,
     int songIndex,
   ) async {
     if (_songId != songId) {
@@ -60,9 +60,9 @@ class SongProvider with ChangeNotifier {
       _profileImageUrl = profileImageUrl;
       _songImageUrl = songImageUrl;
       _bioImageUrl = bioImageUrl;
-      _artistName = artist;
+      _artistName = artistName;
       _songUrl = songUrl;
-      _duration = duration;
+      _songDuration = songDuration;
       _isPlaying = true;
       index = songIndex;
 

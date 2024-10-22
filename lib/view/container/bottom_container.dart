@@ -1,9 +1,10 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'dart:async';
 import 'package:provider/provider.dart';
 import 'package:soundify/provider/song_provider.dart';
 import 'package:soundify/view/style/style.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:audioplayers/audioplayers.dart';
 
 class BottomContainer extends StatefulWidget {
@@ -55,8 +56,9 @@ class _BottomContainerState extends State<BottomContainer> {
     });
 
     _audioPlayer.onPlayerStateChanged.listen((playerState) {
-      if (mounted)
+      if (mounted) {
         setState(() => _isPlaying = playerState == PlayerState.playing);
+      }
     });
   }
 
@@ -67,10 +69,13 @@ class _BottomContainerState extends State<BottomContainer> {
     }
 
     _currentSongUrl = newSongUrl;
-    await _audioPlayer
-        .setSourceUrl(newSongUrl); // Update method for setting URL
-    await _audioPlayer
-        .setReleaseMode(ReleaseMode.loop); // Correct LoopMode to ReleaseMode
+
+    // Convert backslashes to forward slashes to avoid issues on Windows
+    String fixedPath = newSongUrl.replaceAll(r'\', '/');
+    
+    // Use FileSource for local files
+    await _audioPlayer.setSource(DeviceFileSource(fixedPath)); // Updated for local file
+    await _audioPlayer.setReleaseMode(ReleaseMode.loop); // Correct LoopMode to ReleaseMode
 
     setState(() {
       _currentPosition = 0.0;
@@ -181,18 +186,21 @@ class _BottomContainerState extends State<BottomContainer> {
     return Container(
       height: 50,
       width: 50,
-      decoration: BoxDecoration(borderRadius: BorderRadius.circular(4)),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(4),
+      ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(4),
         child: songProvider.songImageUrl.isNotEmpty
-            ? CachedNetworkImage(
-                imageUrl: songProvider.songImageUrl,
-                placeholder: (context, url) =>
-                    const CircularProgressIndicator(color: primaryTextColor),
-                errorWidget: (context, url, error) => _buildErrorImage(),
-                fit: BoxFit.cover,
-              )
-            : const SizedBox.shrink(),
+            ? (Uri.tryParse(songProvider.songImageUrl)?.isAbsolute ?? false
+                ? Image.file(
+                    File(songProvider.songImageUrl), // Load local file image
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) =>
+                        _buildErrorImage(),
+                  )
+                : _buildErrorImage()) // Handle cases where the path is not valid
+            : const SizedBox.shrink(), // Empty space if the URL is not provided
       ),
     );
   }
@@ -216,7 +224,7 @@ class _BottomContainerState extends State<BottomContainer> {
               const TextStyle(color: primaryTextColor, fontSize: smallFontSize),
         ),
         Text(
-          songProvider.artistName,
+          songProvider.artistName ?? '',
           overflow: TextOverflow.ellipsis,
           style: const TextStyle(
               color: quaternaryTextColor, fontSize: microFontSize),
@@ -261,9 +269,9 @@ class _BottomContainerState extends State<BottomContainer> {
       children: [
         SizedBox(width: constraints.maxWidth * 0.01),
         Text(
-          _formatDuration(_currentPosition.toInt()),
-          style:
-              const TextStyle(color: primaryTextColor, fontSize: microFontSize),
+          _formatDuration(Duration(seconds: _currentPosition.toInt())),
+          style: const TextStyle(
+              color: quaternaryTextColor, fontSize: microFontSize),
         ),
         const SizedBox(width: 12),
         Expanded(
@@ -278,7 +286,7 @@ class _BottomContainerState extends State<BottomContainer> {
             child: Slider(
               value: _currentPosition,
               min: 0,
-              max: songProvider.duration.toDouble(),
+              max: songProvider.songDuration.inSeconds.toDouble(),
               onChanged: (value) async {
                 if (mounted) {
                   setState(() => _currentPosition = value);
@@ -290,9 +298,9 @@ class _BottomContainerState extends State<BottomContainer> {
         ),
         const SizedBox(width: 12),
         Text(
-          _formatDuration(songProvider.duration),
-          style:
-              const TextStyle(color: primaryTextColor, fontSize: microFontSize),
+          _formatDuration(songProvider.songDuration),
+          style: const TextStyle(
+              color: quaternaryTextColor, fontSize: microFontSize),
         ),
         SizedBox(width: constraints.maxWidth * 0.01),
       ],
@@ -374,10 +382,12 @@ class _BottomContainerState extends State<BottomContainer> {
     }
   }
 
-  String _formatDuration(int seconds) {
-    int minutes = seconds ~/ 60;
-    int remainingSeconds = seconds % 60;
-    return '$minutes:${remainingSeconds.toString().padLeft(2, '0')}';
+  // Update the _formatDuration method to accept a Duration
+  String _formatDuration(Duration duration) {
+    String twoDigits(int n) => n.toString().padLeft(2, '0');
+    String twoDigitMinutes = twoDigits(duration.inMinutes.remainder(60));
+    String twoDigitSeconds = twoDigits(duration.inSeconds.remainder(60));
+    return "$twoDigitMinutes:$twoDigitSeconds";
   }
 
   @override

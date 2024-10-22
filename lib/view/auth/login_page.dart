@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:soundify/database/database_helper.dart';
 import 'package:soundify/models/user.dart';
+import 'package:soundify/provider/auth_provider.dart';
 import 'package:soundify/view/auth/signup_page.dart';
 import 'package:soundify/view/main_page.dart';
 import 'package:soundify/view/style/style.dart';
+import 'package:provider/provider.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -16,7 +18,7 @@ class _LoginPageState extends State<LoginPage> {
   final emailController = TextEditingController();
   final passwordController = TextEditingController();
   final dbHelper = DatabaseHelper.instance;
-  
+
   bool _isHoveredEmail = false;
   bool _isHoveredPassword = false;
   bool _isHoveredLoginButton = false;
@@ -55,6 +57,9 @@ class _LoginPageState extends State<LoginPage> {
 
         // Store the userId in secure storage (or a session variable)
         await dbHelper.setCurrentUserId(user.userId);
+
+        // Kirim data user ke AuthProvider
+        Provider.of<AuthProvider>(context, listen: false).setCurrentUser(user);
 
         Navigator.pushReplacement(
           context,
@@ -167,7 +172,8 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                       enabledBorder: OutlineInputBorder(
                         borderSide: BorderSide(
-                          color: _isHoveredPassword ? secondaryColor : senaryColor,
+                          color:
+                              _isHoveredPassword ? secondaryColor : senaryColor,
                         ),
                       ),
                     ),
@@ -188,13 +194,16 @@ class _LoginPageState extends State<LoginPage> {
                     child: ElevatedButton(
                       onPressed: login,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor:
-                            _isHoveredLoginButton ? secondaryColor : tertiaryColor,
+                        backgroundColor: _isHoveredLoginButton
+                            ? secondaryColor
+                            : tertiaryColor,
                       ),
                       child: Text(
                         "Login",
                         style: TextStyle(
-                          color: _isHoveredLoginButton ? tertiaryColor : secondaryColor,
+                          color: _isHoveredLoginButton
+                              ? tertiaryColor
+                              : secondaryColor,
                           fontWeight: FontWeight.bold,
                         ),
                       ),

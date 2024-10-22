@@ -51,6 +51,11 @@ class DatabaseHelper {
     return path; // Return the full path to the soundify_database folder
   }
 
+  Future<List<Map<String, dynamic>>> query(String table) async {
+    Database db = await instance.database;
+    return await db.query(table);
+  }
+
   Future _createDB(Database db, int version) async {
     // Create songs table
     await db.execute('''
@@ -180,14 +185,47 @@ class DatabaseHelper {
         conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
+  Future<User?> getUserByArtistId(String artistId) async {
+    Database db = await instance.database;
+    final List<Map<String, dynamic>> maps = await db.query(
+      'users',
+      where: 'userId = ?',
+      whereArgs: [artistId],
+    );
+
+    if (maps.isNotEmpty) {
+      return User.fromMap(maps.first);
+    }
+    return null;
+  }
+
   // Get all songs
   Future<List<Song>> getSongs() async {
     Database db = await instance.database;
     final List<Map<String, dynamic>> maps = await db.query('songs');
 
-    return List.generate(maps.length, (i) {
-      return Song.fromMap(maps[i]);
-    });
+    List<Song> songs = [];
+    for (var map in maps) {
+      Song song = Song.fromMap(map);
+
+      // Get artist details
+      User? artist = await getUserByArtistId(song.artistId);
+      if (artist != null) {
+        song.artistName = artist.fullName;
+        song.profileImageUrl = artist.profileImageUrl;
+        song.bioImageUrl = artist.bioImageUrl;
+      }
+
+      // Get album details
+      Album? album = await getAlbumByCreatorId(song.artistId);
+      if (album != null) {
+        song.albumName = album.albumName;
+      }
+
+      songs.add(song);
+    }
+
+    return songs;
   }
 
   // Get song by ID
@@ -197,7 +235,23 @@ class DatabaseHelper {
         await db.query('songs', where: 'songId = ?', whereArgs: [id]);
 
     if (maps.isNotEmpty) {
-      return Song.fromMap(maps.first);
+      Song song = Song.fromMap(maps.first);
+
+      // Get artist details
+      User? artist = await getUserByArtistId(song.artistId);
+      if (artist != null) {
+        song.artistName = artist.fullName;
+        song.profileImageUrl = artist.profileImageUrl;
+        song.bioImageUrl = artist.bioImageUrl;
+      }
+
+      // Get album details
+      Album? album = await getAlbumByCreatorId(song.artistId);
+      if (album != null) {
+        song.albumName = album.albumName;
+      }
+
+      return song;
     }
     return null;
   }
@@ -280,10 +334,13 @@ class DatabaseHelper {
   }
 
   // Get album by ID
-  Future<Album?> getAlbumById(String id) async {
+  Future<Album?> getAlbumByCreatorId(String creatorId) async {
     Database db = await instance.database;
-    final List<Map<String, dynamic>> maps =
-        await db.query('albums', where: 'albumId = ?', whereArgs: [id]);
+    final List<Map<String, dynamic>> maps = await db.query(
+      'albums',
+      where: 'creatorId = ?',
+      whereArgs: [creatorId],
+    );
 
     if (maps.isNotEmpty) {
       return Album.fromMap(maps.first);
@@ -467,6 +524,71 @@ class DatabaseHelper {
     }
     final db = await database;
     return await db.query('users');
+  }
+
+  // Get songs by artist
+  Future<List<Song>> getSongsByArtist(String artistId) async {
+    Database db = await instance.database;
+    final List<Map<String, dynamic>> maps = await db.query(
+      'songs',
+      where: 'artistId = ?',
+      whereArgs: [artistId],
+    );
+
+    return List.generate(maps.length, (i) {
+      return Song.fromMap(maps[i]);
+    });
+  }
+
+  // Get songs by album
+  Future<List<Song>> getSongsByAlbum(String albumId) async {
+    Database db = await instance.database;
+    final List<Map<String, dynamic>> maps = await db.query(
+      'songs',
+      where: 'albumId = ?',
+      whereArgs: [albumId],
+    );
+
+    return List.generate(maps.length, (i) {
+      return Song.fromMap(maps[i]);
+    });
+  }
+
+  // Get songs by playlist
+  Future<List<Song>> getSongsByPlaylist(String playlistId) async {
+    Database db = await instance.database;
+    final playlist = await getPlaylistById(playlistId);
+    if (playlist != null && playlist.songListIds!.isNotEmpty) {
+      final List<Map<String, dynamic>> maps = await db.query(
+        'songs',
+        where:
+            'songId IN (${playlist.songListIds?.map((_) => '?').join(', ')})',
+        whereArgs: playlist.songListIds,
+      );
+
+      return List.generate(maps.length, (i) {
+        return Song.fromMap(maps[i]);
+      });
+    }
+    return [];
+  }
+
+  // Get liked songs
+  Future<List<Song>> getLikedSongs(String userId) async {
+    Database db = await instance.database;
+    final user = await getUserById(userId);
+    if (user != null && user.userLikedSongs.isNotEmpty) {
+      final List<Map<String, dynamic>> maps = await db.query(
+        'songs',
+        where: 'songId IN (${user.userLikedSongs.map((_) => '?').join(', ')})',
+        whereArgs: user.userLikedSongs,
+      );
+
+      return List.generate(maps.length, (i) {
+        return Song.fromMap(maps[i]);
+      });
+    }
+    return [];
   }
 
   // Update User

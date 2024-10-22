@@ -6,9 +6,12 @@ import 'package:soundify/provider/widget_state_provider_1.dart';
 import 'package:soundify/provider/widget_state_provider_2.dart';
 import 'package:soundify/view/container/bottom_container.dart';
 import 'package:soundify/view/container/primary/add_song_container.dart';
+import 'package:soundify/view/container/primary/home_container.dart';
+import 'package:soundify/view/container/secondary/show_detail_song.dart';
 import 'package:soundify/view/splash_screen.dart';
 import 'package:soundify/view/style/style.dart';
 import 'package:provider/provider.dart';
+import 'package:soundify/view/widget/song_list.dart';
 
 class MainPage extends StatefulWidget {
   // final activeWidget1;
@@ -31,6 +34,8 @@ bool isSearch = true;
 FocusNode searchFocusNode = FocusNode();
 
 class _MainPageState extends State<MainPage> {
+  bool _isHoveredSearch = false;
+
   // String? _profileImageUrl; // Variabel untuk menyimpan URL gambar profil
   // String? _userId; // Variabel untuk menyimpan userId dari currentUser
   // // Pindahkan activeWidget1 dan activeWidget2 ke dalam State
@@ -131,18 +136,18 @@ class _MainPageState extends State<MainPage> {
   //   });
   // }
 
-  // void navigateToHomeContainer() {
-  //   if (!isSearch) {
-  //     Provider.of<WidgetStateProvider1>(context, listen: false).changeWidget(
-  //       const HomeContainer(),
-  //       'HomeContainer',
-  //     );
-  //     setState(() {
-  //       activeWidget2 = const ShowDetailSong();
-  //       isSearch = true;
-  //     });
-  //   }
-  // }
+  void navigateToHomeContainer() {
+    if (!isSearch) {
+      Provider.of<WidgetStateProvider1>(context, listen: false).changeWidget(
+        const HomeContainer(),
+        'HomeContainer',
+      );
+      setState(() {
+        activeWidget2 = const ShowDetailSong();
+        isSearch = true;
+      });
+    }
+  }
 
   // // Fungsi untuk mendapatkan userId dari FirebaseAuth
   // void _getUserId() {
@@ -398,18 +403,18 @@ class _MainPageState extends State<MainPage> {
                                 const EdgeInsets.only(top: 10.0, bottom: 18.0),
                             child: TextButton(
                               onPressed: () {
-                                // setState(
-                                //   () {
-                                //     Provider.of<WidgetStateProvider1>(context,
-                                //             listen: false)
-                                //         .changeWidget(
-                                //       const HomeContainer(),
-                                //       'Home Container',
-                                //     );
+                                setState(
+                                  () {
+                                    Provider.of<WidgetStateProvider1>(context,
+                                            listen: false)
+                                        .changeWidget(
+                                      const HomeContainer(),
+                                      'Home Container',
+                                    );
 
-                                //     activeWidget2 = const ShowDetailSong();
-                                //   },
-                                // );
+                                    activeWidget2 = const ShowDetailSong();
+                                  },
+                                );
                               },
                               child: const Text(
                                 "Soundify",
@@ -702,39 +707,56 @@ class _MainPageState extends State<MainPage> {
                           Row(
                             children: [
                               Expanded(
-                                child: TextFormField(
-                                  // controller: searchListController,
-                                  style:
-                                      const TextStyle(color: primaryTextColor),
-                                  decoration: const InputDecoration(
-                                    contentPadding: EdgeInsets.all(8),
-                                    prefixIcon: Padding(
-                                      padding: EdgeInsets.only(
-                                          left: 12.0, right: 8.0),
-                                      child: Icon(Icons.search,
+                                child: MouseRegion(
+                                  onEnter: (event) => setState(() {
+                                    _isHoveredSearch = true;
+                                  }),
+                                  onExit: (event) => setState(() {
+                                    _isHoveredSearch = false;
+                                  }),
+                                  child: TextFormField(
+                                    controller: searchListController,
+                                    style: const TextStyle(
+                                        color: primaryTextColor),
+                                    decoration: InputDecoration(
+                                      contentPadding: const EdgeInsets.all(8),
+                                      prefixIcon: const Padding(
+                                        padding: EdgeInsets.only(
+                                            left: 12.0, right: 8.0),
+                                        child: Icon(Icons.search,
+                                            color: primaryTextColor),
+                                      ),
+                                      hintText: 'What do you want to play?',
+                                      hintStyle: const TextStyle(
                                           color: primaryTextColor),
+                                      border: const OutlineInputBorder(
+                                        borderRadius: BorderRadius.all(
+                                            Radius.circular(30)),
+                                        borderSide:
+                                            BorderSide(color: secondaryColor),
+                                      ),
+                                      focusedBorder: const OutlineInputBorder(
+                                        borderRadius: BorderRadius.all(
+                                            Radius.circular(30)),
+                                        borderSide:
+                                            BorderSide(color: secondaryColor),
+                                      ),
+                                      enabledBorder: OutlineInputBorder(
+                                        borderRadius: const BorderRadius.all(
+                                            Radius.circular(30)),
+                                        borderSide: BorderSide(
+                                          color: _isHoveredSearch
+                                              ? secondaryColor
+                                              : primaryTextColor,
+                                        ),
+                                      ),
                                     ),
-                                    hintText: 'What do you want to play?',
-                                    hintStyle:
-                                        TextStyle(color: primaryTextColor),
-                                    border: OutlineInputBorder(
-                                      borderRadius:
-                                          BorderRadius.all(Radius.circular(30)),
-                                      borderSide:
-                                          BorderSide(color: primaryTextColor),
-                                    ),
-                                    focusedBorder: OutlineInputBorder(
-                                      borderRadius:
-                                          BorderRadius.all(Radius.circular(30)),
-                                      borderSide:
-                                          BorderSide(color: primaryTextColor),
-                                    ),
+                                    onTap: navigateToHomeContainer,
+                                    onChanged: (value) {
+                                      // Ensure we're on the search list when typing
+                                      navigateToHomeContainer();
+                                    },
                                   ),
-                                  // onTap: navigateToHomeContainer,
-                                  // onChanged: (value) {
-                                  //   // Ensure we're on the search list when typing
-                                  //   navigateToHomeContainer();
-                                  // },
                                 ),
                               ),
                               const SizedBox(width: 12),
@@ -743,16 +765,16 @@ class _MainPageState extends State<MainPage> {
                                     primaryTextColor, // Warna latar belakang
                                 child: IconButton(
                                   onPressed: () {
-                                    // setState(() {
-                                    //   Provider.of<WidgetStateProvider1>(context,
-                                    //           listen: false)
-                                    //       .changeWidget(
-                                    //     const HomeContainer(),
-                                    //     'Home Container',
-                                    //   );
+                                    setState(() {
+                                      Provider.of<WidgetStateProvider1>(context,
+                                              listen: false)
+                                          .changeWidget(
+                                        const HomeContainer(),
+                                        'Home Container',
+                                      );
 
-                                    //   activeWidget2 = const ShowDetailSong();
-                                    // });
+                                      activeWidget2 = const ShowDetailSong();
+                                    });
                                   },
                                   icon: Icon(
                                     Icons.home,

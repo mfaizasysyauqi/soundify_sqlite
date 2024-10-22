@@ -57,6 +57,12 @@ class _AddSongContainerState extends State<AddSongContainer> {
 
   String? senderId;
 
+  bool _isHoveredSongFileName = false;
+  bool _isHoveredImageFileName = false;
+  bool _isHoveredArtistId = false;
+  bool _isHoveredAlbumId = false;
+  bool _isHoveredSongTitle = false;
+
   @override
   void initState() {
     super.initState();
@@ -273,7 +279,7 @@ class _AddSongContainerState extends State<AddSongContainer> {
 
       // Update album
       Album? album =
-          await DatabaseHelper.instance.getAlbumById(albumIdController.text);
+          await DatabaseHelper.instance.getAlbumByCreatorId(albumIdController.text);
       if (album != null) {
         album.songListIds?.add(newSong.songId);
         album.totalDuration =
@@ -412,111 +418,124 @@ class _AddSongContainerState extends State<AddSongContainer> {
             children: [
               SizedBox(
                 height: 50, // Atur tinggi sesuai kebutuhan
-                child: TextFormField(
-                  style: const TextStyle(color: primaryTextColor),
-                  controller:
-                      songFileNameController, // Gunakan controller untuk menampilkan nama file
-                  readOnly:
-                      true, // Field hanya baca, karena pengguna tidak menginput manual
-                  onChanged: (value) => setState(() {}),
-                  decoration: InputDecoration(
-                    contentPadding:
-                        const EdgeInsets.all(8), // Tambahkan padding jika perlu
-                    prefixIcon: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        IconButton(
-                          onPressed: () async {
-                            if (isPickerActive) {
-                              return; // Cegah klik ganda
-                            }
-                            if (mounted) {
-                              setState(() {
-                                isPickerActive = true;
-                              });
-                            }
+                child: MouseRegion(
+                  onEnter: (event) => setState(() {
+                    _isHoveredSongFileName = true;
+                  }),
+                  onExit: (event) => setState(() {
+                    _isHoveredSongFileName = false;
+                  }),
+                  child: TextFormField(
+                    style: const TextStyle(color: primaryTextColor),
+                    controller:
+                        songFileNameController, // Gunakan controller untuk menampilkan nama file
+                    readOnly:
+                        true, // Field hanya baca, karena pengguna tidak menginput manual
+                    onChanged: (value) => setState(() {}),
+                    decoration: InputDecoration(
+                      contentPadding: const EdgeInsets.all(
+                          8), // Tambahkan padding jika perlu
+                      prefixIcon: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            onPressed: () async {
+                              if (isPickerActive) {
+                                return; // Cegah klik ganda
+                              }
+                              if (mounted) {
+                                setState(() {
+                                  isPickerActive = true;
+                                });
+                              }
 
-                            try {
-                              final pickedSongFile =
-                                  await FilePicker.platform.pickFiles(
-                                type: FileType.audio,
-                                allowMultiple: false, // Hanya pilih satu file
-                              );
-                              if (pickedSongFile != null) {
-                                // Ambil file path dari platform desktop
-                                String? filePath =
-                                    pickedSongFile.files.first.path;
+                              try {
+                                final pickedSongFile =
+                                    await FilePicker.platform.pickFiles(
+                                  type: FileType.audio,
+                                  allowMultiple: false, // Hanya pilih satu file
+                                );
+                                if (pickedSongFile != null) {
+                                  // Ambil file path dari platform desktop
+                                  String? filePath =
+                                      pickedSongFile.files.first.path;
 
-                                if (filePath != null) {
-                                  // Update path dan file name
-                                  onSongPathChanged(filePath);
+                                  if (filePath != null) {
+                                    // Update path dan file name
+                                    onSongPathChanged(filePath);
 
-                                  // Tampilkan nama file di TextFormField
-                                  songFileNameController.text =
-                                      filePath.split('/').last;
+                                    // Tampilkan nama file di TextFormField
+                                    songFileNameController.text =
+                                        filePath.split('/').last;
 
-                                  // Set isSongSelected menjadi true setelah file dipilih
+                                    // Set isSongSelected menjadi true setelah file dipilih
+                                    setState(() {
+                                      isSongSelected = true;
+                                    });
+                                  }
+                                }
+                              } catch (e) {
+                                print("Error picking file: $e");
+                              } finally {
+                                if (mounted) {
+                                  // Reset isPickerActive setelah pemilihan file
                                   setState(() {
-                                    isSongSelected = true;
+                                    isPickerActive = false;
                                   });
                                 }
                               }
-                            } catch (e) {
-                              print("Error picking file: $e");
-                            } finally {
-                              if (mounted) {
-                                // Reset isPickerActive setelah pemilihan file
-                                setState(() {
-                                  isPickerActive = false;
-                                });
-                              }
-                            }
-                          },
-                          icon: const Icon(
-                            Icons.music_note,
-                            color: primaryTextColor,
-                          ),
-                        ),
-                        const VerticalDivider(
-                          color: primaryTextColor, // Warna divider
-                          width: 1, // Lebar divider
-                          thickness: 1, // Ketebalan divider
-                        ),
-                        const SizedBox(width: 12),
-                      ],
-                    ),
-                    suffixIcon: isSongSelected
-                        ? IconButton(
-                            onPressed: () {
-                              if (mounted) {
-                                setState(() {
-                                  if (isPlaying) {
-                                    pauseSong(); // Fungsi untuk pause musik
-                                    isPlaying = false;
-                                    currentPosition = null;
-                                  } else {
-                                    playSong(); // Fungsi untuk play musik
-                                    isPlaying = true;
-                                  }
-                                });
-                              }
                             },
-                            icon: Icon(
-                              isPlaying ? Icons.pause : Icons.play_arrow,
+                            icon: const Icon(
+                              Icons.music_note,
                               color: primaryTextColor,
                             ),
-                          )
-                        : null,
-                    hintText: 'Song Name File',
-                    hintStyle: const TextStyle(color: primaryTextColor),
-                    border: const OutlineInputBorder(
-                      borderSide: BorderSide(
-                        color: primaryTextColor,
+                          ),
+                          const VerticalDivider(
+                            color: primaryTextColor, // Warna divider
+                            width: 1, // Lebar divider
+                            thickness: 1, // Ketebalan divider
+                          ),
+                          const SizedBox(width: 12),
+                        ],
                       ),
-                    ),
-                    focusedBorder: const OutlineInputBorder(
-                      borderSide: BorderSide(
-                        color: primaryTextColor,
+                      suffixIcon: isSongSelected
+                          ? IconButton(
+                              onPressed: () {
+                                if (mounted) {
+                                  setState(() {
+                                    if (isPlaying) {
+                                      pauseSong(); // Fungsi untuk pause musik
+                                      isPlaying = false;
+                                      currentPosition = null;
+                                    } else {
+                                      playSong(); // Fungsi untuk play musik
+                                      isPlaying = true;
+                                    }
+                                  });
+                                }
+                              },
+                              icon: Icon(
+                                isPlaying ? Icons.pause : Icons.play_arrow,
+                                color: primaryTextColor,
+                              ),
+                            )
+                          : null,
+                      hintText: 'Song File Name',
+                      hintStyle: const TextStyle(color: primaryTextColor),
+                      border: const OutlineInputBorder(
+                        borderSide: BorderSide(
+                          color: primaryTextColor,
+                        ),
+                      ),
+                      focusedBorder: const OutlineInputBorder(
+                        borderSide: BorderSide(
+                          color: secondaryColor,
+                        ),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderSide: BorderSide(
+                          color: _isHoveredSongFileName ? secondaryColor : senaryColor,
+                        ),
                       ),
                     ),
                   ),
@@ -527,105 +546,188 @@ class _AddSongContainerState extends State<AddSongContainer> {
               ),
               SizedBox(
                 height: 50, // Atur tinggi sesuai kebutuhan
-                child: TextFormField(
-                  style: const TextStyle(color: primaryTextColor),
-                  controller:
-                      songImageFileNameController, // Use the controller here
-                  readOnly:
-                      true, // Make the text field read-only since the user doesn't manually input the file name
-                  onChanged: (value) => setState(() {}),
-                  decoration: InputDecoration(
-                    contentPadding: const EdgeInsets.all(
-                        8), // Optional: tambahkan padding jika perlu
-                    prefixIcon: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        IconButton(
-                          onPressed: () async {
-                            if (isPickerActive) {
-                              return; // Prevent multiple clicks
-                            }
-                            if (mounted) {
-                              setState(() {
-                                isPickerActive = true;
-                              });
-                            }
-                            try {
-                              final pickedImageFile =
-                                  await FilePicker.platform.pickFiles(
-                                type: FileType.image,
-                                allowMultiple:
-                                    false, // Jika hanya ingin memilih satu file
-                              );
-                              if (pickedImageFile != null) {
-                                // Ambil file path dari file yang dipilih
-                                String? filePath =
-                                    pickedImageFile.files.first.path;
+                child: MouseRegion(
+                  onEnter: (event) => setState(() {
+                    _isHoveredImageFileName = true;
+                  }),
+                  onExit: (event) => setState(() {
+                    _isHoveredImageFileName = false;
+                  }),
+                  child: TextFormField(
+                    style: const TextStyle(color: primaryTextColor),
+                    controller:
+                        songImageFileNameController, // Use the controller here
+                    readOnly:
+                        true, // Make the text field read-only since the user doesn't manually input the file name
+                    onChanged: (value) => setState(() {}),
+                    decoration: InputDecoration(
+                      contentPadding: const EdgeInsets.all(
+                          8), // Optional: tambahkan padding jika perlu
+                      prefixIcon: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            onPressed: () async {
+                              if (isPickerActive) {
+                                return; // Prevent multiple clicks
+                              }
+                              if (mounted) {
+                                setState(() {
+                                  isPickerActive = true;
+                                });
+                              }
+                              try {
+                                final pickedImageFile =
+                                    await FilePicker.platform.pickFiles(
+                                  type: FileType.image,
+                                  allowMultiple:
+                                      false, // Jika hanya ingin memilih satu file
+                                );
+                                if (pickedImageFile != null) {
+                                  // Ambil file path dari file yang dipilih
+                                  String? filePath =
+                                      pickedImageFile.files.first.path;
 
-                                if (filePath != null) {
-                                  onImagePathChanged(filePath);
+                                  if (filePath != null) {
+                                    onImagePathChanged(filePath);
 
-                                  // Update image data di Provider dengan file path
-                                  Provider.of<ImageProviderData>(context,
-                                          listen: false)
-                                      .setImageData(
-                                          filePath); // Mengirim null untuk fileBytes karena kita hanya butuh path
+                                    // Update image data di Provider dengan file path
+                                    Provider.of<ImageProviderData>(context,
+                                            listen: false)
+                                        .setImageData(
+                                            filePath); // Mengirim null untuk fileBytes karena kita hanya butuh path
 
+                                    setState(() {
+                                      isImageSelected = true;
+                                    });
+                                  }
+                                }
+                              } catch (e) {
+                                print("Error picking file: $e");
+                              } finally {
+                                if (mounted) {
                                   setState(() {
-                                    isImageSelected = true;
+                                    isPickerActive = false;
                                   });
                                 }
                               }
-                            } catch (e) {
-                              print("Error picking file: $e");
-                            } finally {
-                              if (mounted) {
-                                setState(() {
-                                  isPickerActive = false;
-                                });
-                              }
-                            }
-                          },
-                          icon: const Icon(
-                            Icons.image,
-                            color: primaryTextColor,
+                            },
+                            icon: const Icon(
+                              Icons.image,
+                              color: primaryTextColor,
+                            ),
                           ),
+                          const VerticalDivider(
+                            color: primaryTextColor, // Warna divider
+                            width: 1, // Lebar divider
+                            thickness: 1, // Ketebalan divider
+                          ),
+                          const SizedBox(width: 12),
+                        ],
+                      ),
+                      suffixIcon: isImageSelected
+                          ? IconButton(
+                              onPressed: () {
+                                setState(() {
+                                  // Mengganti widget di dalam Provider dengan dua argumen
+                                  Provider.of<WidgetStateProvider2>(context,
+                                          listen: false)
+                                      .changeWidget(
+                                          const ShowImage(), 'ShowImage');
+                                });
+                              },
+                              icon: const Icon(
+                                Icons.visibility,
+                                color: primaryTextColor,
+                              ),
+                            )
+                          : null,
+                      hintText: 'Image File Name',
+                      hintStyle: const TextStyle(color: primaryTextColor),
+                      border: const OutlineInputBorder(
+                        borderSide: BorderSide(
+                          color: primaryTextColor,
                         ),
-                        const VerticalDivider(
-                          color: primaryTextColor, // Warna divider
-                          width: 1, // Lebar divider
-                          thickness: 1, // Ketebalan divider
+                      ),
+                      focusedBorder: const OutlineInputBorder(
+                        borderSide: BorderSide(
+                          color: secondaryColor,
                         ),
-                        const SizedBox(width: 12),
-                      ],
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderSide: BorderSide(
+                          color: _isHoveredImageFileName ? secondaryColor : senaryColor,
+                        ),
+                      ),
                     ),
-                    suffixIcon: isImageSelected
-                        ? IconButton(
+                  ),
+                ),
+              ),
+              const SizedBox(
+                height: 8,
+              ),
+              SizedBox(
+                height: 50, // Atur tinggi sesuai kebutuhan
+                child: MouseRegion(
+                  onEnter: (event) => setState(() {
+                    _isHoveredArtistId = true;
+                  }),
+                  onExit: (event) => setState(() {
+                    _isHoveredArtistId = false;
+                  }),
+                  child: TextFormField(
+                    style: const TextStyle(color: primaryTextColor),
+                    controller: artistIdController, // Use the controller here
+                    readOnly:
+                        true, // Make the text field read-only since the user doesn't manually input the file name
+                    onChanged: (value) => setState(() {}),
+                    decoration: InputDecoration(
+                      contentPadding: const EdgeInsets.all(
+                          8), // Optional: tambahkan padding jika perlu
+                      prefixIcon: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
                             onPressed: () {
                               setState(() {
-                                // Mengganti widget di dalam Provider dengan dua argumen
+                                isArtistIdEdited =
+                                    false; // Mengganti widget di dalam Provider dengan dua argumen
                                 Provider.of<WidgetStateProvider2>(context,
                                         listen: false)
                                     .changeWidget(
-                                        const ShowImage(), 'ShowImage');
+                                        const SearchArtistId(), 'ShowArtistId');
                               });
                             },
                             icon: const Icon(
-                              Icons.visibility,
+                              Icons.person,
                               color: primaryTextColor,
                             ),
-                          )
-                        : null,
-                    hintText: 'Image Name File',
-                    hintStyle: const TextStyle(color: primaryTextColor),
-                    border: const OutlineInputBorder(
-                      borderSide: BorderSide(
-                        color: primaryTextColor,
+                          ),
+                          const VerticalDivider(
+                            color: primaryTextColor, // Warna divider
+                            width: 1, // Lebar divider
+                            thickness: 1, // Ketebalan divider
+                          ),
+                          const SizedBox(width: 12),
+                        ],
                       ),
-                    ),
-                    focusedBorder: const OutlineInputBorder(
-                      borderSide: BorderSide(
-                        color: primaryTextColor,
+
+                      hintText: 'Artist ID',
+                      hintStyle: const TextStyle(color: primaryTextColor),
+                      border: const OutlineInputBorder(
+                        borderSide: BorderSide(
+                          color: primaryTextColor,
+                        ),
+                      ),
+                      focusedBorder: const OutlineInputBorder(
+                        borderSide: BorderSide(
+                          color: secondaryColor,
+                        ),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderSide: BorderSide(
+                          color: _isHoveredArtistId ? secondaryColor : senaryColor,
+                        ),
                       ),
                     ),
                   ),
@@ -636,53 +738,66 @@ class _AddSongContainerState extends State<AddSongContainer> {
               ),
               SizedBox(
                 height: 50, // Atur tinggi sesuai kebutuhan
-                child: TextFormField(
-                  style: const TextStyle(color: primaryTextColor),
-                  controller: artistIdController, // Use the controller here
-                  readOnly:
-                      true, // Make the text field read-only since the user doesn't manually input the file name
-                  onChanged: (value) => setState(() {}),
-                  decoration: InputDecoration(
-                    contentPadding: const EdgeInsets.all(
-                        8), // Optional: tambahkan padding jika perlu
-                    prefixIcon: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        IconButton(
-                          onPressed: () {
-                            setState(() {
-                              isArtistIdEdited =
-                                  false; // Mengganti widget di dalam Provider dengan dua argumen
-                              Provider.of<WidgetStateProvider2>(context,
-                                      listen: false)
-                                  .changeWidget(
-                                      const SearchArtistId(), 'ShowArtistId');
-                            });
-                          },
-                          icon: const Icon(
-                            Icons.person,
-                            color: primaryTextColor,
+                child: MouseRegion(
+                  onEnter: (event) => setState(() {
+                    _isHoveredAlbumId = true;
+                  }),
+                  onExit: (event) => setState(() {
+                    _isHoveredAlbumId = false;
+                  }),
+                  child: TextFormField(
+                    style: const TextStyle(color: primaryTextColor),
+                    controller: albumIdController, // Use the controller here
+                    readOnly:
+                        true, // Make the text field read-only since the user doesn't manually input the file name
+                    onChanged: (value) => setState(() {}),
+                    decoration: InputDecoration(
+                      contentPadding: const EdgeInsets.all(
+                          8), // Optional: tambahkan padding jika perlu
+                      prefixIcon: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            onPressed: () {
+                              setState(() {
+                                isAlbumIdEdited =
+                                    false; // Mengganti widget di dalam Provider dengan dua argumen
+                                Provider.of<WidgetStateProvider2>(context,
+                                        listen: false)
+                                    .changeWidget(
+                                        const SearchAlbumId(), 'SearchAlbumId');
+                              });
+                            },
+                            icon: const Icon(
+                              Icons.album,
+                              color: primaryTextColor,
+                            ),
                           ),
-                        ),
-                        const VerticalDivider(
-                          color: primaryTextColor, // Warna divider
-                          width: 1, // Lebar divider
-                          thickness: 1, // Ketebalan divider
-                        ),
-                        const SizedBox(width: 12),
-                      ],
-                    ),
-
-                    hintText: 'Artist ID',
-                    hintStyle: const TextStyle(color: primaryTextColor),
-                    border: const OutlineInputBorder(
-                      borderSide: BorderSide(
-                        color: primaryTextColor,
+                          const VerticalDivider(
+                            color: primaryTextColor, // Warna divider
+                            width: 1, // Lebar divider
+                            thickness: 1, // Ketebalan divider
+                          ),
+                          const SizedBox(width: 12),
+                        ],
                       ),
-                    ),
-                    focusedBorder: const OutlineInputBorder(
-                      borderSide: BorderSide(
-                        color: primaryTextColor,
+
+                      hintText: 'Album ID',
+                      hintStyle: const TextStyle(color: primaryTextColor),
+                      border: const OutlineInputBorder(
+                        borderSide: BorderSide(
+                          color: primaryTextColor,
+                        ),
+                      ),
+                      focusedBorder: const OutlineInputBorder(
+                        borderSide: BorderSide(
+                          color: secondaryColor,
+                        ),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderSide: BorderSide(
+                          color: _isHoveredAlbumId ? secondaryColor : senaryColor,
+                        ),
                       ),
                     ),
                   ),
@@ -693,101 +808,56 @@ class _AddSongContainerState extends State<AddSongContainer> {
               ),
               SizedBox(
                 height: 50, // Atur tinggi sesuai kebutuhan
-                child: TextFormField(
-                  style: const TextStyle(color: primaryTextColor),
-                  controller: albumIdController, // Use the controller here
-                  readOnly:
-                      true, // Make the text field read-only since the user doesn't manually input the file name
-                  onChanged: (value) => setState(() {}),
-                  decoration: InputDecoration(
-                    contentPadding: const EdgeInsets.all(
-                        8), // Optional: tambahkan padding jika perlu
-                    prefixIcon: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        IconButton(
-                          onPressed: () {
-                            setState(() {
-                              isAlbumIdEdited =
-                                  false; // Mengganti widget di dalam Provider dengan dua argumen
-                              Provider.of<WidgetStateProvider2>(context,
-                                      listen: false)
-                                  .changeWidget(
-                                      const SearchAlbumId(), 'SearchAlbumId');
-                            });
-                          },
-                          icon: const Icon(
-                            Icons.album,
-                            color: primaryTextColor,
+                child: MouseRegion(
+                  onEnter: (event) => setState(() {
+                    _isHoveredSongTitle = true;
+                  }),
+                  onExit: (event) => setState(() {
+                    _isHoveredSongTitle = false;
+                  }),
+                  child: TextFormField(
+                    style: const TextStyle(color: primaryTextColor),
+                    controller: songTitleController, // Use the controller here
+                    readOnly:
+                        false, // Make the text field read-only since the user doesn't manually input the file name
+                    onChanged: (value) => setState(() {}),
+                    decoration: InputDecoration(
+                      contentPadding: const EdgeInsets.all(
+                          8), // Optional: tambahkan padding jika perlu
+                      prefixIcon: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            onPressed: () {},
+                            icon: const Icon(
+                              Icons.headset,
+                              color: primaryTextColor,
+                            ),
                           ),
-                        ),
-                        const VerticalDivider(
-                          color: primaryTextColor, // Warna divider
-                          width: 1, // Lebar divider
-                          thickness: 1, // Ketebalan divider
-                        ),
-                        const SizedBox(width: 12),
-                      ],
-                    ),
-
-                    hintText: 'Album ID',
-                    hintStyle: const TextStyle(color: primaryTextColor),
-                    border: const OutlineInputBorder(
-                      borderSide: BorderSide(
-                        color: primaryTextColor,
-                      ),
-                    ),
-                    focusedBorder: const OutlineInputBorder(
-                      borderSide: BorderSide(
-                        color: primaryTextColor,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(
-                height: 8,
-              ),
-              SizedBox(
-                height: 50, // Atur tinggi sesuai kebutuhan
-                child: TextFormField(
-                  style: const TextStyle(color: primaryTextColor),
-                  controller: songTitleController, // Use the controller here
-                  readOnly:
-                      false, // Make the text field read-only since the user doesn't manually input the file name
-                  onChanged: (value) => setState(() {}),
-                  decoration: InputDecoration(
-                    contentPadding: const EdgeInsets.all(
-                        8), // Optional: tambahkan padding jika perlu
-                    prefixIcon: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        IconButton(
-                          onPressed: () {},
-                          icon: const Icon(
-                            Icons.headset,
-                            color: primaryTextColor,
+                          const VerticalDivider(
+                            color: primaryTextColor, // Warna divider
+                            width: 1, // Lebar divider
+                            thickness: 1, // Ketebalan divider
                           ),
-                        ),
-                        const VerticalDivider(
-                          color: primaryTextColor, // Warna divider
-                          width: 1, // Lebar divider
-                          thickness: 1, // Ketebalan divider
-                        ),
-                        const SizedBox(width: 12),
-                      ],
-                    ),
-
-                    hintText: 'Song Title',
-                    hintStyle: const TextStyle(color: primaryTextColor),
-                    border: const OutlineInputBorder(
-                      borderSide: BorderSide(
-                        color: primaryTextColor,
+                          const SizedBox(width: 12),
+                        ],
                       ),
-                    ),
-                    focusedBorder: const OutlineInputBorder(
-                      borderSide: BorderSide(
-                        color: primaryTextColor,
+                      hintText: 'Song Title',
+                      hintStyle: const TextStyle(color: primaryTextColor),
+                      border: const OutlineInputBorder(
+                        borderSide: BorderSide(
+                          color: primaryTextColor,
+                        ),
+                      ),
+                      focusedBorder: const OutlineInputBorder(
+                        borderSide: BorderSide(
+                          color: secondaryColor,
+                        ),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderSide: BorderSide(
+                          color: _isHoveredSongTitle ? secondaryColor : senaryColor,
+                        ),
                       ),
                     ),
                   ),

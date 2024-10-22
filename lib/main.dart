@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:soundify/database/database_helper.dart';
 import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform;
 import 'package:soundify/provider/album_provider.dart';
+import 'package:soundify/provider/auth_provider.dart';
 import 'package:soundify/provider/image_provider.dart';
 import 'package:soundify/provider/song_provider.dart';
 import 'package:soundify/provider/widget_size_provider.dart';
@@ -56,13 +57,14 @@ void main() async {
 
   // print("Running MyApp...");
 
-  await DatabaseHelper.instance.clearAllData();
-  print("Semua data pengguna telah dihapus.");
+  // await DatabaseHelper.instance.clearAllData();
+  // print("Semua data pengguna telah dihapus.");
 
   // Gunakan MultiProvider di sini dengan provider terpisah
   runApp(
     MultiProvider(
       providers: [
+        ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => WidgetSizeProvider()),
         ChangeNotifierProvider(create: (_) => WidgetStateProvider1()),
         ChangeNotifierProvider(create: (_) => WidgetStateProvider2()),

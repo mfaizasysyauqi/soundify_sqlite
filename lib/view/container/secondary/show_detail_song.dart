@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:soundify/provider/song_provider.dart';
@@ -37,16 +39,12 @@ class _ShowDetailSongState extends State<ShowDetailSong> {
                           child: ClipRRect(
                             borderRadius: BorderRadius.circular(4),
                             child: Container(
-                              width: screenWidth *
-                                  0.22, // Use the full width of the screen
-                              height: screenWidth *
-                                  0.22, // Maintain a fixed height for consistency
                               child: InteractiveViewer(
                                 scaleEnabled: false,
-                                child: Image.network(
-                                  songProvider.songImageUrl,
-                                  fit: BoxFit
-                                      .cover, // Ensures image covers the entire container
+                                child: Image.file(
+                                  File(songProvider
+                                      .songImageUrl), // Ensure this is a valid file path
+                                  fit: BoxFit.cover,
                                 ),
                               ),
                             ),
@@ -59,8 +57,7 @@ class _ShowDetailSongState extends State<ShowDetailSong> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         SizedBox(
-                          width: screenWidth *
-                              0.8, // Set text width as 80% of screen width
+                          width: screenWidth * 1,
                           child: Text(
                             songProvider.songTitle,
                             overflow: TextOverflow.ellipsis,
@@ -75,7 +72,7 @@ class _ShowDetailSongState extends State<ShowDetailSong> {
                           width: screenWidth *
                               0.8, // Set text width as 80% of screen width
                           child: Text(
-                            songProvider.artistName,
+                            songProvider.artistName ?? '',
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
                               color: quaternaryTextColor,
@@ -99,7 +96,7 @@ class _ShowDetailSongState extends State<ShowDetailSong> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  songProvider.bioImageUrl.isNotEmpty
+                                  songProvider.bioImageUrl!.isNotEmpty
                                       ? Stack(
                                           children: [
                                             ClipRect(
@@ -110,11 +107,11 @@ class _ShowDetailSongState extends State<ShowDetailSong> {
                                                         .userBio.isNotEmpty
                                                     ? 0.75
                                                     : 0.9, // Show only 75% of the image
-                                                child: Image.network(
-                                                  songProvider.bioImageUrl,
-                                                  width: screenWidth * 0.22,
-                                                  height: screenWidth *
-                                                      0.22, // Maintain aspect ratio
+                                                child: Image.file(
+                                                  File(
+                                                    songProvider.bioImageUrl ??
+                                                        '',
+                                                  ),
                                                   fit: BoxFit.cover,
                                                   errorBuilder: (context, error,
                                                       stackTrace) {
@@ -192,18 +189,19 @@ class _ShowDetailSongState extends State<ShowDetailSong> {
                                               CircleAvatar(
                                                 radius: 40,
                                                 backgroundColor: (songProvider
-                                                        .profileImageUrl
+                                                        .profileImageUrl!
                                                         .isEmpty)
                                                     ? primaryTextColor
                                                     : tertiaryColor,
                                                 backgroundImage: songProvider
-                                                        .profileImageUrl
+                                                        .profileImageUrl!
                                                         .isNotEmpty
                                                     ? NetworkImage(songProvider
-                                                        .profileImageUrl)
+                                                            .profileImageUrl ??
+                                                        '')
                                                     : null, // Assign NetworkImage if _profileImageUrl is valid
                                                 child: (songProvider
-                                                        .profileImageUrl
+                                                        .profileImageUrl!
                                                         .isEmpty)
                                                     ? Icon(
                                                         Icons.person,
@@ -223,7 +221,7 @@ class _ShowDetailSongState extends State<ShowDetailSong> {
                                     padding: const EdgeInsets.symmetric(
                                         horizontal: 16.0),
                                     child: Text(
-                                      songProvider.artistName,
+                                      songProvider.artistName ?? '',
                                       maxLines: 3,
                                       overflow: TextOverflow.ellipsis,
                                       style: const TextStyle(

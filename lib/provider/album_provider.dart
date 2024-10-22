@@ -74,7 +74,7 @@ class AlbumProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      Album? album = await DatabaseHelper.instance.getAlbumById(albumId);
+      Album? album = await DatabaseHelper.instance.getAlbumByCreatorId(albumId);
       if (album != null) {
         _updateAlbumData(album);
       } else {
