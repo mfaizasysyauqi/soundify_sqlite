@@ -36,6 +36,7 @@ class _HoverIconsWidgetState extends State<HoverIconsWidget> {
               child: GestureDetector(
                 onTap: () {
                   widget.onItemTapped(widget.index); // Notify parent about the tap
+                  
                 },
                 child: const Icon(
                   Icons.more_horiz,

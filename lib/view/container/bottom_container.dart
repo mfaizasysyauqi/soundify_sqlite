@@ -1,8 +1,12 @@
 import 'dart:io';
+import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'dart:async';
 import 'package:provider/provider.dart';
+import 'package:soundify/database/database_helper.dart';
+import 'package:soundify/models/song.dart';
+import 'package:soundify/models/user.dart';
 import 'package:soundify/provider/song_provider.dart';
 import 'package:soundify/view/style/style.dart';
 import 'package:audioplayers/audioplayers.dart';
@@ -15,18 +19,31 @@ class BottomContainer extends StatefulWidget {
 }
 
 class _BottomContainerState extends State<BottomContainer> {
-  final AudioPlayer _audioPlayer = AudioPlayer(); // This will now work
+  final AudioPlayer _audioPlayer = AudioPlayer();
   double _currentPosition = 0.0;
   double _currentVolume = 0.5;
   bool _isPlaying = false;
   bool _isMuted = false;
+  bool _isShuffleMode = false;
+  bool _isRepeatMode = false;
   String _currentSongUrl = '';
+  List<Song> _originalPlaylist = [];
+  List<Song> _shuffledPlaylist = [];
+  bool _isHoveredSkipPrevious = false;
+  bool _isHoveredSkipNext = false;
 
   @override
   void initState() {
     super.initState();
     _initializeAudioPlayer();
     _loadUserPreferences();
+    _loadPlaylist();
+  }
+
+  Future<void> _loadPlaylist() async {
+    final dbHelper = DatabaseHelper.instance;
+    _originalPlaylist = await dbHelper.getSongs();
+    _shuffledPlaylist = List.from(_originalPlaylist);
   }
 
   void _initializeAudioPlayer() {
@@ -60,6 +77,11 @@ class _BottomContainerState extends State<BottomContainer> {
         setState(() => _isPlaying = playerState == PlayerState.playing);
       }
     });
+
+    // Add listener for song completion
+    _audioPlayer.onPlayerComplete.listen((_) {
+      _onSongComplete();
+    });
   }
 
   Future<void> _handleSongChange(String newSongUrl, bool shouldPlay) async {
@@ -69,13 +91,13 @@ class _BottomContainerState extends State<BottomContainer> {
     }
 
     _currentSongUrl = newSongUrl;
-
-    // Convert backslashes to forward slashes to avoid issues on Windows
     String fixedPath = newSongUrl.replaceAll(r'\', '/');
-    
-    // Use FileSource for local files
-    await _audioPlayer.setSource(DeviceFileSource(fixedPath)); // Updated for local file
-    await _audioPlayer.setReleaseMode(ReleaseMode.loop); // Correct LoopMode to ReleaseMode
+
+    await _audioPlayer.setSource(DeviceFileSource(fixedPath));
+
+    // Set ReleaseMode based on repeat mode
+    await _audioPlayer
+        .setReleaseMode(_isRepeatMode ? ReleaseMode.loop : ReleaseMode.release);
 
     setState(() {
       _currentPosition = 0.0;
@@ -237,7 +259,25 @@ class _BottomContainerState extends State<BottomContainer> {
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        _buildPlayPauseButton(),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            _buildShuffleButton(),
+            const SizedBox(
+              width: 24,
+            ),
+            _buildSkipPreviousButton(),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24.0),
+              child: _buildPlayPauseButton(),
+            ),
+            _buildSkipNextButton(),
+            const SizedBox(
+              width: 24,
+            ),
+            _buildRepeatButton(),
+          ],
+        ),
         const SizedBox(height: 6),
         _buildProgressBar(constraints),
       ],
@@ -259,6 +299,179 @@ class _BottomContainerState extends State<BottomContainer> {
           color: primaryColor,
           size: 28,
         ),
+      ),
+    );
+  }
+
+  void _toggleShuffleMode() async {
+    setState(() {
+      _isShuffleMode = !_isShuffleMode;
+      if (_isShuffleMode) {
+        // Shuffle the playlist
+        _shuffledPlaylist.shuffle(Random());
+      } else {
+        // Restore original order
+        _shuffledPlaylist = List.from(_originalPlaylist);
+      }
+    });
+  }
+
+  void _toggleRepeatMode() async {
+    setState(() {
+      _isRepeatMode = !_isRepeatMode;
+    });
+
+    // Update audio player's release mode
+    await _audioPlayer
+        .setReleaseMode(_isRepeatMode ? ReleaseMode.loop : ReleaseMode.release);
+  }
+
+  Future<void> _onSongComplete() async {
+    if (!_isRepeatMode) {
+      await _skipToNextSong();
+    }
+  }
+
+  Future<void> _skipToNextSong() async {
+    final songProvider = Provider.of<SongProvider>(context, listen: false);
+    final dbHelper = DatabaseHelper.instance;
+
+    // Get current song index
+    List<Song> songs = await dbHelper.getSongs();
+    int currentIndex =
+        songs.indexWhere((song) => song.songUrl == _currentSongUrl);
+
+    // Calculate previous index
+    int nextIndex = currentIndex - 1;
+    if (nextIndex < 0) {
+      nextIndex = songs.length - 1; // Loop to last song
+    }
+
+    if (songs.isNotEmpty && nextIndex < songs.length) {
+      Song nextSong = songs[nextIndex];
+
+      // Update the song provider with new song details using setSong
+      songProvider.setSong(
+        nextSong.songId,
+        nextSong.senderId,
+        nextSong.artistId,
+        nextSong.songTitle,
+        nextSong.profileImageUrl,
+        nextSong.songImageUrl,
+        nextSong.bioImageUrl,
+        nextSong.artistName,
+        nextSong.songUrl,
+        nextSong.songDuration,
+        nextIndex,
+      );
+
+      // The setSong method will trigger notifyListeners, so we don't need
+      // to explicitly call it
+
+      // Save last listened song to current user
+      User? currentUser = await dbHelper.getCurrentUser();
+      if (currentUser != null) {
+        currentUser.lastListenedSongId = nextSong.songId;
+        await dbHelper.updateUser(currentUser);
+      }
+    }
+  }
+
+  Future<void> _skipToPreviousSong() async {
+    final songProvider = Provider.of<SongProvider>(context, listen: false);
+    final dbHelper = DatabaseHelper.instance;
+
+    // Get current song index
+    List<Song> songs = await dbHelper.getSongs();
+    int currentIndex =
+        songs.indexWhere((song) => song.songUrl == _currentSongUrl);
+
+    // Calculate next index
+    int previousIndex = currentIndex + 1;
+
+    if (songs.isNotEmpty && previousIndex >= 0) {
+      Song previousSong = songs[previousIndex];
+
+      // Update the song provider with new song details using setSong
+      songProvider.setSong(
+        previousSong.songId,
+        previousSong.senderId,
+        previousSong.artistId,
+        previousSong.songTitle,
+        previousSong.profileImageUrl,
+        previousSong.songImageUrl,
+        previousSong.bioImageUrl,
+        previousSong.artistName,
+        previousSong.songUrl,
+        previousSong.songDuration,
+        previousIndex,
+      );
+
+      // Save last listened song to current user
+      User? currentUser = await dbHelper.getCurrentUser();
+      if (currentUser != null) {
+        currentUser.lastListenedSongId = previousSong.songId;
+        await dbHelper.updateUser(currentUser);
+      }
+    }
+  }
+
+  Widget _buildSkipPreviousButton() {
+    return MouseRegion(
+      onEnter: (event) => setState(() {
+        _isHoveredSkipPrevious = true;
+      }),
+      onExit: (event) => setState(() {
+        _isHoveredSkipPrevious = false;
+      }),
+      child: GestureDetector(
+        onTap: _skipToPreviousSong,
+        child: Icon(
+          Icons.skip_previous,
+          color: _isHoveredSkipPrevious ? secondaryColor : quaternaryTextColor,
+          size: 28,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSkipNextButton() {
+    return MouseRegion(
+      onEnter: (event) => setState(() {
+        _isHoveredSkipNext = true;
+      }),
+      onExit: (event) => setState(() {
+        _isHoveredSkipNext = false;
+      }),
+      child: GestureDetector(
+        onTap: _skipToNextSong,
+        child: Icon(
+          Icons.skip_next,
+          color: _isHoveredSkipNext ? secondaryColor : quaternaryTextColor,
+          size: 28,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildShuffleButton() {
+    return GestureDetector(
+      onTap: _toggleShuffleMode,
+      child: Icon(
+        Icons.shuffle,
+        color: _isShuffleMode ? secondaryColor : quaternaryTextColor,
+        size: 24,
+      ),
+    );
+  }
+
+  Widget _buildRepeatButton() {
+    return GestureDetector(
+      onTap: _toggleRepeatMode,
+      child: Icon(
+        Icons.repeat,
+        color: _isRepeatMode ? secondaryColor : quaternaryTextColor,
+        size: 24,
       ),
     );
   }

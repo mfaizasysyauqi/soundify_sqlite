@@ -80,7 +80,7 @@ class _SignUpPageState extends State<SignUpPage> {
       await DatabaseHelper.instance.insertUser(newUser.toMap());
 
       // Save to JSON file
-      await FileStorageHelper.instance.addUser(newUser.toMap());
+      // await FileStorageHelper.instance.addUser(newUser.toMap());
 
       // Update JSON with latest user
       await FileStorageHelper.instance.updateJsonWithLatestUser();

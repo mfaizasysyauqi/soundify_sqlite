@@ -5,12 +5,12 @@ class Song {
   late String songId;
   final String senderId;
   final String artistId;
+  final String albumId;
   final String songTitle;
   final String songImageUrl;
   final String songUrl;
   final Duration songDuration;
   final DateTime timestamp; // Use DateTime for timestamp
-  final String? albumId;
   final int artistSongIndex;
   late List<String>? likeIds;
   late List<String>? playlistIds;
@@ -26,12 +26,12 @@ class Song {
     required this.songId,
     required this.senderId,
     required this.artistId,
+    required this.albumId,
     required this.songTitle,
     required this.songImageUrl,
     required this.songUrl,
     required this.songDuration,
     required this.timestamp, // Use DateTime here
-    this.albumId,
     required this.artistSongIndex,
     this.likeIds,
     this.playlistIds,
@@ -45,12 +45,12 @@ class Song {
       'songId': songId,
       'senderId': senderId,
       'artistId': artistId,
+      'albumId': albumId,
       'songTitle': songTitle,
       'songImageUrl': songImageUrl,
       'songUrl': songUrl,
       'songDuration': songDuration.inSeconds, // Store duration as seconds
       'timestamp': timestamp.toIso8601String(), // Store DateTime as ISO string
-      'albumId': albumId,
       'artistSongIndex': artistSongIndex,
       'likeIds': likeIds?.join(','), // Convert List to comma-separated String
       'playlistIds': playlistIds?.join(','),
@@ -65,12 +65,12 @@ class Song {
       songId: map['songId'],
       senderId: map['senderId'],
       artistId: map['artistId'],
+      albumId: map['albumId'],
       songTitle: map['songTitle'],
       songImageUrl: map['songImageUrl'],
       songUrl: map['songUrl'],
       songDuration: Duration(seconds: map['songDuration']),
       timestamp: DateTime.parse(map['timestamp']), // Parse string to DateTime
-      albumId: map['albumId'],
       artistSongIndex: map['artistSongIndex'],
       likeIds:
           map['likeIds'] != null ? (map['likeIds'] as String).split(',') : [],
@@ -95,12 +95,12 @@ class Song {
       songId: '', // Empty string for the songId
       senderId: '', // Empty string for the senderId
       artistId: '', // Empty string for the artistId
+      albumId: '', // Null for optional albumId
       songTitle: '', // Empty string for the songTitle
       songImageUrl: '', // Empty string for the songImageUrl
       songUrl: '', // Empty string for the songUrl
       songDuration: Duration.zero, // Zero duration for the song
       timestamp: DateTime.now(), // Current timestamp
-      albumId: null, // Null for optional albumId
       artistSongIndex: 0, // Default to 0 for artistSongIndex
       likeIds: [], // Empty list for likeIds
       playlistIds: [], // Empty list for playlistIds

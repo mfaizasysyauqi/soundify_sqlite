@@ -28,59 +28,60 @@ class _LoginPageState extends State<LoginPage> {
     passwordController.clear();
   }
 
-  Future<void> login() async {
-    if (!validateFields()) {
-      return;
-    }
-
-    try {
-      print('Attempting to log in with email: ${emailController.text.trim()}');
-
-      // Retrieve user by email and password
-      User? user = await dbHelper.getUserByEmailAndPassword(
-        emailController.text.trim(),
-        passwordController.text.trim(),
-      );
-
-      if (user != null) {
-        print('Login successful for user: ${user.username}');
-
-        // Double-check if the user exists in the database
-        User? verifiedUser = await dbHelper.getUserById(user.userId);
-        if (verifiedUser == null) {
-          print('Error: User not found in database after successful login');
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Error: User data inconsistency')),
-          );
-          return;
-        }
-
-        // Store the userId in secure storage (or a session variable)
-        await dbHelper.setCurrentUserId(user.userId);
-
-        // Kirim data user ke AuthProvider
-        Provider.of<AuthProvider>(context, listen: false).setCurrentUser(user);
-
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => const SplashScreen(),
-          ),
-        );
-        clearTextFields();
-      } else {
-        print('Login failed: User not found');
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Email or password incorrect!')),
-        );
-      }
-    } catch (e) {
-      print('Login error: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('An error occurred during login!')),
-      );
-    }
+ Future<void> login() async {
+  if (!validateFields()) {
+    return;
   }
+
+  try {
+    print('Attempting to log in with email: ${emailController.text.trim()}');
+
+    // Retrieve user by email and password
+    User? user = await dbHelper.getUserByEmailAndPassword(
+      emailController.text.trim(),
+      passwordController.text.trim(),
+    );
+
+    if (user != null) {
+      print('Login successful for user: ${user.username}');
+
+      // Verifikasi user di database
+      User? verifiedUser = await dbHelper.getUserById(user.userId);
+      if (verifiedUser == null) {
+        print('Error: User not found in database after successful login');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Error: User data inconsistency')),
+        );
+        return;
+      }
+
+      // Simpan userId ke secure storage atau session
+      await dbHelper.setCurrentUserId(user.userId);
+
+      // Kirim data user ke AuthProvider
+      Provider.of<AuthProvider>(context, listen: false).setCurrentUser(user);
+
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const SplashScreen(),
+        ),
+      );
+      clearTextFields();
+    } else {
+      print('Login failed: User not found');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Email or password incorrect!')),
+      );
+    }
+  } catch (e) {
+    print('Login error: $e');
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('An error occurred during login!')),
+    );
+  }
+}
+
 
   @override
   Widget build(BuildContext context) {

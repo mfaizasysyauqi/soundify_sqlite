@@ -66,6 +66,8 @@ dev_dependencies:
   flutter_secure_storage: ^8.0.0
   audioplayers: ^6.1.0
   path: ^1.8.0
+  idb_shim: ^2.3.1  # For IndexedDB support in web
+  shared_preferences: ^2.0.9
   
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

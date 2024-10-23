@@ -1,13 +1,15 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/widgets.dart';
 import 'package:soundify/components/hover_icons_widget.dart';
 import 'package:soundify/database/database_helper.dart';
 import 'package:soundify/models/song.dart';
 import 'package:soundify/models/user.dart';
 import 'package:soundify/provider/song_provider.dart';
 import 'package:soundify/provider/widget_state_provider_1.dart';
+import 'package:soundify/provider/widget_state_provider_2.dart';
+import 'package:soundify/view/container/secondary/show_detail_song.dart';
+import 'package:soundify/view/container/secondary/song_menu.dart';
 import 'package:soundify/view/style/style.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
@@ -164,10 +166,10 @@ class _SongListState extends State<SongList> {
           originalIndex: ascendingIndex,
           songId: song.songId,
           senderId: song.senderId,
+          albumId: song.albumId,
           songTitle: song.songTitle,
           artistId: song.artistId,
           artistName: song.artistName,
-          albumId: song.albumId,
           albumName: song.albumName,
           artistFileIndex: song.artistSongIndex,
           formattedDate: formattedDate,
@@ -197,12 +199,12 @@ class _SongListState extends State<SongList> {
 class SongListItem extends StatefulWidget {
   final int index;
   final int originalIndex;
+  final String artistId;
   final String songId;
   final String senderId;
+  final String albumId;
   final String songTitle;
-  final String artistId;
   final String? artistName;
-  final String? albumId;
   final String? albumName;
   final int artistFileIndex;
   final String formattedDate;
@@ -249,10 +251,9 @@ class SongListItem extends StatefulWidget {
 }
 
 class _SongListItemState extends State<SongListItem> {
-  bool _isLiked = false;
   SongProvider? songProvider; // make nullable
   bool _isHovering = false;
-
+  bool _isLiked = false;
 // Function to change hovering state
   void _handleHoverChange(bool isHovering) {
     setState(() {
@@ -319,6 +320,11 @@ class _SongListItemState extends State<SongListItem> {
           widget.onItemTapped(widget.index);
           _playSelectedSong();
           songProvider?.setShouldPlay(true);
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            Provider.of<WidgetStateProvider2>(context, listen: false)
+                .changeWidget(const ShowDetailSong(), 'ShowDetailSong');
+          });
+          
         },
         child: Container(
           color: widget.isClicked
@@ -564,7 +570,23 @@ class _SongListItemState extends State<SongListItem> {
             HoverIconsWidget(
               isClicked: widget.isClicked,
               onItemTapped: (index) {
-                print('Item tapped at index: $index');
+                Provider.of<WidgetStateProvider2>(context, listen: false)
+                    .changeWidget(
+                  SongMenu(
+                    onChangeWidget: (Widget) {},
+                    songId: widget.songId,
+                    songUrl: widget.songUrl,
+                    songImageUrl: widget.songImageUrl,
+                    artistId: widget.artistId,
+                    artistName: widget.artistName,
+                    albumId: widget.albumId,
+                    artistFileIndex: widget.artistFileIndex,
+                    songTitle: widget.songTitle,
+                    songDuration: widget.songDuration,
+                    originalIndex: widget.originalIndex,
+                  ),
+                  'SongMenu',
+                );
               },
               index: widget.index,
               isHoveringParent: _isHovering, // Pass hover state
@@ -577,7 +599,7 @@ class _SongListItemState extends State<SongListItem> {
     );
   } // In your widget class, replace the _onLikedChanged method with:
 
-  void _onLikedChanged(bool isLiked) async {
+  void _onLikedChanged(bool _isLiked) async {
     // Get current user from DatabaseHelper
     User? currentUser = await DatabaseHelper.instance.getCurrentUser();
 
