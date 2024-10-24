@@ -171,7 +171,7 @@ class _SongListState extends State<SongList> {
           artistId: song.artistId,
           artistName: song.artistName,
           albumName: song.albumName,
-          artistFileIndex: song.artistSongIndex,
+          artistSongIndex: song.artistSongIndex,
           formattedDate: formattedDate,
           songDuration: song.songDuration,
           songUrl: song.songUrl,
@@ -206,7 +206,7 @@ class SongListItem extends StatefulWidget {
   final String songTitle;
   final String? artistName;
   final String? albumName;
-  final int artistFileIndex;
+  final int artistSongIndex;
   final String formattedDate;
   final Duration songDuration;
   final String songUrl;
@@ -231,7 +231,7 @@ class SongListItem extends StatefulWidget {
     required this.artistName,
     required this.albumId,
     required this.albumName,
-    required this.artistFileIndex,
+    required this.artistSongIndex,
     required this.formattedDate,
     required this.songDuration,
     required this.songUrl,
@@ -544,7 +544,7 @@ class _SongListItemState extends State<SongListItem> {
                     if (!mounted) return;
                     setState(() {
                       _isLiked = !_isLiked; // Toggle the value of _isLiked
-                      _onLikedChanged(_isLiked); // Update Firestore
+                      _onLikedChanged(_isLiked); 
                     });
                   },
                 ),
@@ -580,10 +580,11 @@ class _SongListItemState extends State<SongListItem> {
                     artistId: widget.artistId,
                     artistName: widget.artistName,
                     albumId: widget.albumId,
-                    artistFileIndex: widget.artistFileIndex,
+                    artistSongIndex: widget.artistSongIndex,
                     songTitle: widget.songTitle,
                     songDuration: widget.songDuration,
                     originalIndex: widget.originalIndex,
+                    likedIds: widget.likedIds,
                   ),
                   'SongMenu',
                 );

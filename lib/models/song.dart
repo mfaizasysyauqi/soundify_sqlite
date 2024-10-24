@@ -4,14 +4,14 @@ import 'dart:convert';
 class Song {
   late String songId;
   final String senderId;
-  final String artistId;
-  final String albumId;
-  final String songTitle;
-  final String songImageUrl;
-  final String songUrl;
-  final Duration songDuration;
+  late final String artistId;
+  late final String albumId;
+  late final String songTitle;
+  late final String songImageUrl;
+  late final String songUrl;
+  late final Duration songDuration;
   final DateTime timestamp; // Use DateTime for timestamp
-  final int artistSongIndex;
+  late final int artistSongIndex;
   late List<String>? likeIds;
   late List<String>? playlistIds;
   late List<String>? albumIds;

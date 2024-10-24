@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:soundify/database/database_helper.dart';
 import 'package:soundify/database/file_storage_helper.dart';
+import 'package:soundify/models/user.dart';
 import 'package:soundify/provider/widget_state_provider_1.dart';
 import 'package:soundify/provider/widget_state_provider_2.dart';
 import 'package:soundify/view/container/primary/edit_song_container.dart';
@@ -20,10 +21,11 @@ class SongMenu extends StatefulWidget {
   final String artistId;
   final String albumId;
   final String? artistName;
-  final int artistFileIndex;
+  final int artistSongIndex;
   final String songTitle;
   final Duration songDuration;
   final int? originalIndex; // Made nullable with ?
+  final List<String>? likedIds;
 
   const SongMenu({
     super.key,
@@ -34,10 +36,11 @@ class SongMenu extends StatefulWidget {
     required this.artistId,
     required this.artistName,
     required this.albumId,
-    required this.artistFileIndex,
+    required this.artistSongIndex,
     required this.songTitle,
     required this.songDuration,
     this.originalIndex, // Made optional by removing required
+    this.likedIds,
   });
 
   @override
@@ -45,7 +48,49 @@ class SongMenu extends StatefulWidget {
 }
 
 class _SongMenuState extends State<SongMenu> {
-  bool isLiked = false; // Added missing isLiked variable
+  bool _isLiked = false; // Added missing _isLiked variable
+
+  @override
+  void initState() {
+    super.initState();
+    _checkIfLiked();
+  }
+
+  Future<void> _checkIfLiked() async {
+    final currentUser = await DatabaseHelper.instance.getCurrentUser();
+    if (currentUser != null && widget.likedIds != null) {
+      if (mounted) {
+        setState(() {
+          _isLiked = widget.likedIds!.contains(currentUser.userId);
+        });
+      }
+    }
+  }
+
+  void _onLikedChanged(bool _isLiked) async {
+    // Get current user from DatabaseHelper
+    User? currentUser = await DatabaseHelper.instance.getCurrentUser();
+
+    if (currentUser == null) {
+      print('No user logged in');
+      return;
+    }
+
+    try {
+      bool newLikeStatus = await DatabaseHelper.instance.toggleSongLike(
+        widget.songId,
+        currentUser.userId,
+      );
+
+      // Update UI if needed
+      setState(() {
+        // Update local state to reflect new like status
+        _isLiked = newLikeStatus;
+      });
+    } catch (e) {
+      print('Error updating likes: $e');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -189,7 +234,8 @@ class _SongMenuState extends State<SongMenu> {
             onTap: () {
               if (!mounted) return;
               setState(() {
-                isLiked = !isLiked;
+                _isLiked = !_isLiked; // Toggle the value of _isLiked
+                _onLikedChanged(_isLiked);
               });
             },
             child: Padding(
@@ -200,13 +246,15 @@ class _SongMenuState extends State<SongMenu> {
                 child: Row(
                   children: [
                     Icon(
-                      isLiked ? Icons.favorite : Icons.favorite_border_outlined,
-                      color: isLiked ? secondaryColor : primaryTextColor,
+                      _isLiked
+                          ? Icons.favorite
+                          : Icons.favorite_border_outlined,
+                      color: _isLiked ? secondaryColor : primaryTextColor,
                       size: 18,
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 14),
                     Text(
-                      isLiked
+                      _isLiked
                           ? "Remove from your Liked Songs"
                           : "Save to your Liked Songs",
                       style: const TextStyle(
@@ -251,7 +299,7 @@ class _SongMenuState extends State<SongMenu> {
                       songUrl: widget.songUrl,
                       songImageUrl: widget.songImageUrl,
                       artistId: widget.artistId,
-                      artistFileIndex: widget.artistFileIndex,
+                      artistSongIndex: widget.artistSongIndex,
                       albumId: widget.albumId,
                       songTitle: widget.songTitle,
                       songDuration: widget.songDuration,
@@ -301,7 +349,7 @@ class _SongMenuState extends State<SongMenu> {
                 widget.songId,
                 widget.songUrl,
                 widget.songImageUrl,
-                widget.artistFileIndex,
+                widget.artistSongIndex,
               );
               // print('ini adalah widget id ${widget.songId}');
             },

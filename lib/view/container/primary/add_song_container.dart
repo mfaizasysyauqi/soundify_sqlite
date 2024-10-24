@@ -32,28 +32,26 @@ class AddSongContainer extends StatefulWidget {
 }
 
 class _AddSongContainerState extends State<AddSongContainer> {
-  String? songPath;
-  Uint8List? songBytes;
-  String? imagePath;
-  Uint8List? imageBytes;
+  String? _songPath;
+  String? _imagePath;
 
-  AudioPlayer audioPlayer = AudioPlayer();
-  bool isPickerActive = false;
-  bool isSongSelected = false;
-  bool isImageSelected = false;
-  bool isPlaying = false;
-  bool isArtistIdEdited = false;
-  bool isAlbumIdEdited = false;
-  bool isFetchingDuration = false;
+  AudioPlayer _audioPlayer = AudioPlayer();
+  bool _isPickerActive = false;
+  bool _isSongSelected = false;
+  bool _isImageSelected = false;
+  bool _isPlaying = false;
+  bool _isArtistIdEdited = false;
+  bool _isAlbumIdEdited = false;
+  final bool _isFetchingDuration = false;
 
   Duration? songDuration;
   int? songDurationS;
 
-  TextEditingController songFileNameController = TextEditingController();
-  TextEditingController songImageFileNameController = TextEditingController();
-  TextEditingController songTitleController = TextEditingController();
-  TextEditingController albumIdController = TextEditingController();
-  TextEditingController artistIdController = TextEditingController();
+ final TextEditingController _songFileNameController = TextEditingController();
+ final TextEditingController _songImageFileNameController = TextEditingController();
+ final TextEditingController _songTitleController = TextEditingController();
+ final TextEditingController _albumIdController = TextEditingController();
+ final TextEditingController _artistIdController = TextEditingController();
 
   String? senderId;
 
@@ -66,6 +64,7 @@ class _AddSongContainerState extends State<AddSongContainer> {
   @override
   void initState() {
     super.initState();
+    _resetForm();
     _initializeAudioPlayer();
     _loadCurrentUserId();
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -76,21 +75,21 @@ class _AddSongContainerState extends State<AddSongContainer> {
 
   void _initializeAudioPlayer() {
     try {
-      audioPlayer = AudioPlayer();
-      audioPlayer.onPlayerStateChanged.listen((state) {
+      _audioPlayer = AudioPlayer();
+      _audioPlayer.onPlayerStateChanged.listen((state) {
         setState(() {
-          isPlaying = state == PlayerState.playing;
+          _isPlaying = state == PlayerState.playing;
         });
       });
 
-      audioPlayer.onDurationChanged.listen((duration) {
+      _audioPlayer.onDurationChanged.listen((duration) {
         setState(() {
           songDuration = duration;
           songDurationS = duration.inSeconds;
         });
       });
 
-      audioPlayer.onPositionChanged.listen((position) {
+      _audioPlayer.onPositionChanged.listen((position) {
         setState(() {
           currentPosition = position;
         });
@@ -119,15 +118,15 @@ class _AddSongContainerState extends State<AddSongContainer> {
 
   void updateArtistIdController() {
     final newArtistId = Provider.of<SongProvider>(context).artistId;
-    if (!isArtistIdEdited) {
-      artistIdController.text = newArtistId;
+    if (!_isArtistIdEdited) {
+      _artistIdController.text = newArtistId;
     }
   }
 
   void updateAlbumIdController() {
     final newAlbumId = Provider.of<AlbumProvider>(context).albumId;
-    if (!isAlbumIdEdited) {
-      albumIdController.text = newAlbumId;
+    if (!_isAlbumIdEdited) {
+      _albumIdController.text = newAlbumId;
     }
   }
 
@@ -145,27 +144,27 @@ class _AddSongContainerState extends State<AddSongContainer> {
   }
 
   void onSongPathChanged(String? newSongPath) async {
-    if (isPlaying) {
-      await audioPlayer.stop();
+    if (_isPlaying) {
+      await _audioPlayer.stop();
     }
 
     if (mounted) {
       setState(() {
-        songPath = newSongPath;
-        songFileNameController.text = newSongPath?.split('/').last ?? '';
+        _songPath = newSongPath;
+        _songFileNameController.text = newSongPath?.split('/').last ?? '';
         currentPosition = null;
-        isSongSelected = true;
+        _isSongSelected = true;
       });
     }
 
-    if (songPath != null && isPlaying) {
+    if (_songPath != null && _isPlaying) {
       await playSong();
     }
 
-    if (songPath != null) {
+    if (_songPath != null) {
       try {
-        await audioPlayer
-            .setSource(DeviceFileSource(songPath!)); // Set file source
+        await _audioPlayer
+            .setSource(DeviceFileSource(_songPath!)); // Set file source
       } catch (e) {
         print("Error setting file path: $e");
         ScaffoldMessenger.of(context).showSnackBar(
@@ -182,8 +181,8 @@ class _AddSongContainerState extends State<AddSongContainer> {
   void onImagePathChanged(String? newImagePath) {
     if (mounted) {
       setState(() {
-        imagePath = newImagePath;
-        songImageFileNameController.text = newImagePath?.split('/').last ?? '';
+        _imagePath = newImagePath;
+        _songImageFileNameController.text = newImagePath?.split('/').last ?? '';
       });
     }
   }
@@ -193,14 +192,14 @@ class _AddSongContainerState extends State<AddSongContainer> {
   Future<void> playSong() async {
     if (currentPosition != null) {
       // Resume from the last position
-      await audioPlayer.seek(currentPosition!);
-      await audioPlayer
-          .play(DeviceFileSource(songPath!)); // Add the source here
-    } else if (songPath != null) {
+      await _audioPlayer.seek(currentPosition!);
+      await _audioPlayer
+          .play(DeviceFileSource(_songPath!)); // Add the source here
+    } else if (_songPath != null) {
       // Play from the beginning
       try {
-        await audioPlayer
-            .play(DeviceFileSource(songPath!)); // Set the file path
+        await _audioPlayer
+            .play(DeviceFileSource(_songPath!)); // Set the file path
       } catch (e) {
         print("Error setting file path: $e");
         ScaffoldMessenger.of(context).showSnackBar(
@@ -212,16 +211,16 @@ class _AddSongContainerState extends State<AddSongContainer> {
   }
 
   Future<void> pauseSong() async {
-    await audioPlayer.pause();
+    await _audioPlayer.pause();
   }
 
   bool _isFormValid() {
-    return isSongSelected &&
-        isImageSelected &&
-        artistIdController.text.isNotEmpty &&
-        albumIdController.text.isNotEmpty &&
-        songTitleController.text.isNotEmpty &&
-        !isFetchingDuration;
+    return _isSongSelected &&
+        _isImageSelected &&
+        _artistIdController.text.isNotEmpty &&
+        _albumIdController.text.isNotEmpty &&
+        _songTitleController.text.isNotEmpty &&
+        !_isFetchingDuration;
   }
 
   Future<void> _submitSongData() async {
@@ -232,7 +231,7 @@ class _AddSongContainerState extends State<AddSongContainer> {
       return;
     }
 
-    if (songDurationS == null || songPath == null || imagePath == null) {
+    if (songDurationS == null || _songPath == null || _imagePath == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
             content: Text(
@@ -243,16 +242,16 @@ class _AddSongContainerState extends State<AddSongContainer> {
 
     try {
       // Save song file to local storage
-      String savedSongPath = await _saveFile(songPath!, 'songs', 'song_file');
+      String savedSongPath = await _saveFile(_songPath!, 'songs', 'song_file');
 
       // Save image file to local storage
       String savedImagePath =
-          await _saveFile(imagePath!, 'song_images', 'song_image');
+          await _saveFile(_imagePath!, 'song_images', 'song_image');
 
       // Get the appropriate artistFileIndex
       List<Song> existingSongs = await DatabaseHelper.instance.getSongs();
       int artistFileIndex = existingSongs
-              .where((song) => song.artistId == artistIdController.text)
+              .where((song) => song.artistId == _artistIdController.text)
               .length +
           1;
 
@@ -260,17 +259,17 @@ class _AddSongContainerState extends State<AddSongContainer> {
       Song newSong = Song(
         songId: DateTime.now().millisecondsSinceEpoch.toString(),
         senderId: senderId!,
-        artistId: artistIdController.text,
-        songTitle: songTitleController.text,
+        artistId: _artistIdController.text,
+        songTitle: _songTitleController.text,
         songImageUrl: savedImagePath,
         songUrl: savedSongPath,
         songDuration: Duration(seconds: songDurationS!),
         timestamp: DateTime.now(),
-        albumId: albumIdController.text,
+        albumId: _albumIdController.text,
         artistSongIndex: artistFileIndex,
         likeIds: [],
         playlistIds: [],
-        albumIds: [albumIdController.text],
+        albumIds: [_albumIdController.text],
         playedIds: [],
       );
 
@@ -278,8 +277,8 @@ class _AddSongContainerState extends State<AddSongContainer> {
       await DatabaseHelper.instance.insertSong(newSong);
 
       // Update album
-      Album? album =
-          await DatabaseHelper.instance.getAlbumByCreatorId(albumIdController.text);
+      Album? album = await DatabaseHelper.instance
+          .getAlbumByCreatorId(_albumIdController.text);
       if (album != null) {
         album.songListIds?.add(newSong.songId);
         album.totalDuration =
@@ -378,30 +377,31 @@ class _AddSongContainerState extends State<AddSongContainer> {
   }
 
   void _resetForm() {
-    songFileNameController.clear();
-    songImageFileNameController.clear();
-    songTitleController.clear();
-    artistIdController.clear();
-    albumIdController.clear();
+    _songFileNameController.clear();
+    _songImageFileNameController.clear();
+    _songTitleController.clear();
+    _artistIdController.clear();
+    _albumIdController.clear();
     setState(() {
-      imagePath = null;
-      songPath = null;
-      isSongSelected = false;
-      isImageSelected = false;
+      _imagePath = null;
+      _songPath = null;
+      _isSongSelected = false;
+      _isImageSelected = false;
     });
   }
 
   @override
   void dispose() {
-    // if (audioPlayer.playing) {
-    //   audioPlayer.stop();
+    // if (_audioPlayer.playing) {
+    //   _audioPlayer.stop();
     // }
-    audioPlayer.dispose();
-    songTitleController.dispose();
-    artistIdController.dispose();
-    albumIdController.dispose();
-    songFileNameController.dispose();
-    songImageFileNameController.dispose();
+    _audioPlayer.dispose();
+    _songTitleController.dispose();
+    _artistIdController.dispose();
+    _albumIdController.dispose();
+    _songFileNameController.dispose();
+    _songImageFileNameController.dispose();
+    _resetForm();
     super.dispose();
   }
 
@@ -428,7 +428,7 @@ class _AddSongContainerState extends State<AddSongContainer> {
                   child: TextFormField(
                     style: const TextStyle(color: primaryTextColor),
                     controller:
-                        songFileNameController, // Gunakan controller untuk menampilkan nama file
+                        _songFileNameController, // Gunakan controller untuk menampilkan nama file
                     readOnly:
                         true, // Field hanya baca, karena pengguna tidak menginput manual
                     onChanged: (value) => setState(() {}),
@@ -440,12 +440,12 @@ class _AddSongContainerState extends State<AddSongContainer> {
                         children: [
                           IconButton(
                             onPressed: () async {
-                              if (isPickerActive) {
+                              if (_isPickerActive) {
                                 return; // Cegah klik ganda
                               }
                               if (mounted) {
                                 setState(() {
-                                  isPickerActive = true;
+                                  _isPickerActive = true;
                                 });
                               }
 
@@ -465,12 +465,12 @@ class _AddSongContainerState extends State<AddSongContainer> {
                                     onSongPathChanged(filePath);
 
                                     // Tampilkan nama file di TextFormField
-                                    songFileNameController.text =
+                                    _songFileNameController.text =
                                         filePath.split('/').last;
 
-                                    // Set isSongSelected menjadi true setelah file dipilih
+                                    // Set _isSongSelected menjadi true setelah file dipilih
                                     setState(() {
-                                      isSongSelected = true;
+                                      _isSongSelected = true;
                                     });
                                   }
                                 }
@@ -478,9 +478,9 @@ class _AddSongContainerState extends State<AddSongContainer> {
                                 print("Error picking file: $e");
                               } finally {
                                 if (mounted) {
-                                  // Reset isPickerActive setelah pemilihan file
+                                  // Reset _isPickerActive setelah pemilihan file
                                   setState(() {
-                                    isPickerActive = false;
+                                    _isPickerActive = false;
                                   });
                                 }
                               }
@@ -498,24 +498,24 @@ class _AddSongContainerState extends State<AddSongContainer> {
                           const SizedBox(width: 12),
                         ],
                       ),
-                      suffixIcon: isSongSelected
+                      suffixIcon: _isSongSelected
                           ? IconButton(
                               onPressed: () {
                                 if (mounted) {
                                   setState(() {
-                                    if (isPlaying) {
+                                    if (_isPlaying) {
                                       pauseSong(); // Fungsi untuk pause musik
-                                      isPlaying = false;
+                                      _isPlaying = false;
                                       currentPosition = null;
                                     } else {
                                       playSong(); // Fungsi untuk play musik
-                                      isPlaying = true;
+                                      _isPlaying = true;
                                     }
                                   });
                                 }
                               },
                               icon: Icon(
-                                isPlaying ? Icons.pause : Icons.play_arrow,
+                                _isPlaying ? Icons.pause : Icons.play_arrow,
                                 color: primaryTextColor,
                               ),
                             )
@@ -534,7 +534,9 @@ class _AddSongContainerState extends State<AddSongContainer> {
                       ),
                       enabledBorder: OutlineInputBorder(
                         borderSide: BorderSide(
-                          color: _isHoveredSongFileName ? secondaryColor : senaryColor,
+                          color: _isHoveredSongFileName
+                              ? secondaryColor
+                              : senaryColor,
                         ),
                       ),
                     ),
@@ -556,7 +558,7 @@ class _AddSongContainerState extends State<AddSongContainer> {
                   child: TextFormField(
                     style: const TextStyle(color: primaryTextColor),
                     controller:
-                        songImageFileNameController, // Use the controller here
+                        _songImageFileNameController, // Use the controller here
                     readOnly:
                         true, // Make the text field read-only since the user doesn't manually input the file name
                     onChanged: (value) => setState(() {}),
@@ -568,12 +570,12 @@ class _AddSongContainerState extends State<AddSongContainer> {
                         children: [
                           IconButton(
                             onPressed: () async {
-                              if (isPickerActive) {
+                              if (_isPickerActive) {
                                 return; // Prevent multiple clicks
                               }
                               if (mounted) {
                                 setState(() {
-                                  isPickerActive = true;
+                                  _isPickerActive = true;
                                 });
                               }
                               try {
@@ -598,7 +600,7 @@ class _AddSongContainerState extends State<AddSongContainer> {
                                             filePath); // Mengirim null untuk fileBytes karena kita hanya butuh path
 
                                     setState(() {
-                                      isImageSelected = true;
+                                      _isImageSelected = true;
                                     });
                                   }
                                 }
@@ -607,7 +609,7 @@ class _AddSongContainerState extends State<AddSongContainer> {
                               } finally {
                                 if (mounted) {
                                   setState(() {
-                                    isPickerActive = false;
+                                    _isPickerActive = false;
                                   });
                                 }
                               }
@@ -625,7 +627,7 @@ class _AddSongContainerState extends State<AddSongContainer> {
                           const SizedBox(width: 12),
                         ],
                       ),
-                      suffixIcon: isImageSelected
+                      suffixIcon: _isImageSelected
                           ? IconButton(
                               onPressed: () {
                                 setState(() {
@@ -656,7 +658,9 @@ class _AddSongContainerState extends State<AddSongContainer> {
                       ),
                       enabledBorder: OutlineInputBorder(
                         borderSide: BorderSide(
-                          color: _isHoveredImageFileName ? secondaryColor : senaryColor,
+                          color: _isHoveredImageFileName
+                              ? secondaryColor
+                              : senaryColor,
                         ),
                       ),
                     ),
@@ -677,7 +681,7 @@ class _AddSongContainerState extends State<AddSongContainer> {
                   }),
                   child: TextFormField(
                     style: const TextStyle(color: primaryTextColor),
-                    controller: artistIdController, // Use the controller here
+                    controller: _artistIdController, // Use the controller here
                     readOnly:
                         true, // Make the text field read-only since the user doesn't manually input the file name
                     onChanged: (value) => setState(() {}),
@@ -690,7 +694,7 @@ class _AddSongContainerState extends State<AddSongContainer> {
                           IconButton(
                             onPressed: () {
                               setState(() {
-                                isArtistIdEdited =
+                                _isArtistIdEdited =
                                     false; // Mengganti widget di dalam Provider dengan dua argumen
                                 Provider.of<WidgetStateProvider2>(context,
                                         listen: false)
@@ -726,7 +730,8 @@ class _AddSongContainerState extends State<AddSongContainer> {
                       ),
                       enabledBorder: OutlineInputBorder(
                         borderSide: BorderSide(
-                          color: _isHoveredArtistId ? secondaryColor : senaryColor,
+                          color:
+                              _isHoveredArtistId ? secondaryColor : senaryColor,
                         ),
                       ),
                     ),
@@ -747,7 +752,7 @@ class _AddSongContainerState extends State<AddSongContainer> {
                   }),
                   child: TextFormField(
                     style: const TextStyle(color: primaryTextColor),
-                    controller: albumIdController, // Use the controller here
+                    controller: _albumIdController, // Use the controller here
                     readOnly:
                         true, // Make the text field read-only since the user doesn't manually input the file name
                     onChanged: (value) => setState(() {}),
@@ -760,7 +765,7 @@ class _AddSongContainerState extends State<AddSongContainer> {
                           IconButton(
                             onPressed: () {
                               setState(() {
-                                isAlbumIdEdited =
+                                _isAlbumIdEdited =
                                     false; // Mengganti widget di dalam Provider dengan dua argumen
                                 Provider.of<WidgetStateProvider2>(context,
                                         listen: false)
@@ -796,7 +801,8 @@ class _AddSongContainerState extends State<AddSongContainer> {
                       ),
                       enabledBorder: OutlineInputBorder(
                         borderSide: BorderSide(
-                          color: _isHoveredAlbumId ? secondaryColor : senaryColor,
+                          color:
+                              _isHoveredAlbumId ? secondaryColor : senaryColor,
                         ),
                       ),
                     ),
@@ -817,7 +823,7 @@ class _AddSongContainerState extends State<AddSongContainer> {
                   }),
                   child: TextFormField(
                     style: const TextStyle(color: primaryTextColor),
-                    controller: songTitleController, // Use the controller here
+                    controller: _songTitleController, // Use the controller here
                     readOnly:
                         false, // Make the text field read-only since the user doesn't manually input the file name
                     onChanged: (value) => setState(() {}),
@@ -856,7 +862,9 @@ class _AddSongContainerState extends State<AddSongContainer> {
                       ),
                       enabledBorder: OutlineInputBorder(
                         borderSide: BorderSide(
-                          color: _isHoveredSongTitle ? secondaryColor : senaryColor,
+                          color: _isHoveredSongTitle
+                              ? secondaryColor
+                              : senaryColor,
                         ),
                       ),
                     ),

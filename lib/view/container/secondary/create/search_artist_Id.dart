@@ -18,6 +18,8 @@ class _SearchArtistIdState extends State<SearchArtistId> {
   List<User> users = [];
   List<User> filteredUsers = [];
 
+  bool _isHoveredSearchArtist = false;
+
   @override
   void initState() {
     super.initState();
@@ -43,7 +45,8 @@ class _SearchArtistIdState extends State<SearchArtistId> {
 
   // Function to fetch data from SQLite
   Future<void> _loadUsers() async {
-    List<Map<String, dynamic>> userMaps = await DatabaseHelper.instance.getUsers();
+    List<Map<String, dynamic>> userMaps =
+        await DatabaseHelper.instance.getUsers();
     List<User> loadedUsers = userMaps.map((map) => User.fromMap(map)).toList();
 
     if (mounted) {
@@ -79,50 +82,63 @@ class _SearchArtistIdState extends State<SearchArtistId> {
             padding: EdgeInsets.all(8.0),
             child: Text(
               "Select Artist ID",
-              style: TextStyle(color: Colors.white),
+              style: TextStyle(color: primaryTextColor),
             ),
           ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0),
-            child: TextFormField(
-              style: const TextStyle(color: Colors.white),
-              controller: searchArtistController,
-              decoration: InputDecoration(
-                contentPadding: const EdgeInsets.all(8),
-                prefixIcon: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    IconButton(
-                      onPressed: () {
-                        if (mounted) {
-                          setState(() {
-                            filteredUsers = _filterUsers(users);
-                          });
-                        }
-                      },
-                      icon: const Icon(
-                        Icons.search,
-                        color: Colors.white,
+            child: MouseRegion(
+              onEnter: (event) => setState(() {
+                _isHoveredSearchArtist = true;
+              }),
+              onExit: (event) => setState(() {
+                _isHoveredSearchArtist = false;
+              }),
+              child: TextFormField(
+                style: const TextStyle(color: primaryTextColor),
+                controller: searchArtistController,
+                decoration: InputDecoration(
+                  contentPadding: const EdgeInsets.all(8),
+                  prefixIcon: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        onPressed: () {
+                          if (mounted) {
+                            setState(() {
+                              filteredUsers = _filterUsers(users);
+                            });
+                          }
+                        },
+                        icon: const Icon(
+                          Icons.search,
+                          color: primaryTextColor,
+                        ),
                       ),
-                    ),
-                    const VerticalDivider(
-                      color: Colors.white,
-                      width: 1,
-                      thickness: 1,
-                    ),
-                    const SizedBox(width: 12),
-                  ],
-                ),
-                hintText: 'Search Username',
-                hintStyle: const TextStyle(color: Colors.white),
-                border: const OutlineInputBorder(
-                  borderSide: BorderSide(
-                    color: Colors.white,
+                      const VerticalDivider(
+                        color: primaryTextColor,
+                        width: 1,
+                        thickness: 1,
+                      ),
+                      const SizedBox(width: 12),
+                    ],
                   ),
-                ),
-                focusedBorder: const OutlineInputBorder(
-                  borderSide: BorderSide(
-                    color: Colors.white,
+                  hintText: 'Search Username',
+                  hintStyle: const TextStyle(color: primaryTextColor),
+                  border: const OutlineInputBorder(
+                    borderSide: BorderSide(
+                      color: primaryTextColor,
+                    ),
+                  ),
+                  focusedBorder: const OutlineInputBorder(
+                    borderSide: BorderSide(
+                      color: secondaryColor,
+                    ),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderSide: BorderSide(
+                      color: _isHoveredSearchArtist ? secondaryColor : senaryColor,
+                    ),
                   ),
                 ),
               ),
@@ -137,21 +153,23 @@ class _SearchArtistIdState extends State<SearchArtistId> {
             child: FutureBuilder<List<Map<String, dynamic>>>(
               future: DatabaseHelper.instance.getUsers(),
               builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(
-                    child: CircularProgressIndicator(
-                      color: primaryTextColor,
-                    ),
-                  );
-                }
+                // if (snapshot.connectionState == ConnectionState.waiting) {
+                //   return const Center(
+                //     child: CircularProgressIndicator(
+                //       color: primaryTextColor,
+                //     ),
+                //   );
+                // }
 
                 if (!snapshot.hasData || snapshot.data!.isEmpty) {
                   return const Center(
-                    child: Text('No users found', style: TextStyle(color: Colors.white)),
+                    child: Text('No users found',
+                        style: TextStyle(color: primaryTextColor)),
                   );
                 }
 
-                List<User> allUsers = snapshot.data!.map((map) => User.fromMap(map)).toList();
+                List<User> allUsers =
+                    snapshot.data!.map((map) => User.fromMap(map)).toList();
                 List<User> displayedUsers = _filterUsers(allUsers);
 
                 return ListView.builder(
@@ -162,7 +180,7 @@ class _SearchArtistIdState extends State<SearchArtistId> {
                       title: Text(
                         user.username,
                         style: const TextStyle(
-                          color: Colors.white,
+                          color: primaryTextColor,
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),

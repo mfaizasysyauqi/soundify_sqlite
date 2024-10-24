@@ -9,13 +9,13 @@ class HoverIconsWidget extends StatefulWidget {
   final Function(bool) onHoverChange; // Callback to notify parent of hover changes
 
   const HoverIconsWidget({
-    Key? key,
+    super.key,
     required this.isClicked,
     required this.onItemTapped,
     required this.index,
     required this.isHoveringParent,
     required this.onHoverChange,
-  }) : super(key: key);
+  });
 
   @override
   State<HoverIconsWidget> createState() => _HoverIconsWidgetState();

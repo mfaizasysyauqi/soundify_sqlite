@@ -21,6 +21,9 @@ class _SearchAlbumIdState extends State<SearchAlbumId> {
   late TextEditingController searchAlbumController;
   late TextEditingController albumIdController;
 
+  bool _isHoveredAlbumId = false;
+  bool _isHoveredAlbumName = false;
+
   @override
   void initState() {
     super.initState();
@@ -87,74 +90,27 @@ class _SearchAlbumIdState extends State<SearchAlbumId> {
           // First TextFormField for search
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0),
-            child: TextFormField(
-              style: const TextStyle(color: primaryTextColor),
-              controller: searchAlbumController,
-              decoration: InputDecoration(
-                contentPadding: const EdgeInsets.all(8),
-                prefixIcon: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    IconButton(
-                      onPressed: () {
-                        setState(() {});
-                      },
-                      icon: const Icon(
-                        Icons.search,
-                        color: primaryTextColor,
-                      ),
-                    ),
-                    const VerticalDivider(
-                      color: primaryTextColor,
-                      width: 1,
-                      thickness: 1,
-                    ),
-                    const SizedBox(width: 12),
-                  ],
-                ),
-                suffixIcon: IconButton(
-                  onPressed: () {
-                    setState(() {
-                      _isSecondFieldVisible = !_isSecondFieldVisible;
-                    });
-                  },
-                  icon: Icon(
-                    _isSecondFieldVisible ? Icons.remove : Icons.add,
-                    color: primaryTextColor,
-                  ),
-                ),
-                hintText: 'Search Album Name',
-                hintStyle: const TextStyle(color: primaryTextColor),
-                border: const OutlineInputBorder(
-                  borderSide: BorderSide(
-                    color: primaryTextColor,
-                  ),
-                ),
-                focusedBorder: const OutlineInputBorder(
-                  borderSide: BorderSide(
-                    color: primaryTextColor,
-                  ),
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 8.0),
-          // Second TextFormField for adding album name
-          if (_isSecondFieldVisible)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            child: MouseRegion(
+              onEnter: (event) => setState(() {
+                _isHoveredAlbumId = true;
+              }),
+              onExit: (event) => setState(() {
+                _isHoveredAlbumId = false;
+              }),
               child: TextFormField(
                 style: const TextStyle(color: primaryTextColor),
-                controller: _albumNameController,
+                controller: searchAlbumController,
                 decoration: InputDecoration(
                   contentPadding: const EdgeInsets.all(8),
                   prefixIcon: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       IconButton(
-                        onPressed: () {},
+                        onPressed: () {
+                          setState(() {});
+                        },
                         icon: const Icon(
-                          Icons.album,
+                          Icons.search,
                           color: primaryTextColor,
                         ),
                       ),
@@ -166,18 +122,18 @@ class _SearchAlbumIdState extends State<SearchAlbumId> {
                       const SizedBox(width: 12),
                     ],
                   ),
-                  suffixIcon: _isTextFilled
-                      ? IconButton(
-                          onPressed: () {
-                            _submitAlbumData();
-                          },
-                          icon: const Icon(
-                            Icons.check,
-                            color: primaryTextColor,
-                          ),
-                        )
-                      : null,
-                  hintText: 'Album Name',
+                  suffixIcon: IconButton(
+                    onPressed: () {
+                      setState(() {
+                        _isSecondFieldVisible = !_isSecondFieldVisible;
+                      });
+                    },
+                    icon: Icon(
+                      _isSecondFieldVisible ? Icons.remove : Icons.add,
+                      color: primaryTextColor,
+                    ),
+                  ),
+                  hintText: 'Search Album Name',
                   hintStyle: const TextStyle(color: primaryTextColor),
                   border: const OutlineInputBorder(
                     borderSide: BorderSide(
@@ -186,7 +142,80 @@ class _SearchAlbumIdState extends State<SearchAlbumId> {
                   ),
                   focusedBorder: const OutlineInputBorder(
                     borderSide: BorderSide(
-                      color: primaryTextColor,
+                      color: secondaryColor,
+                    ),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderSide: BorderSide(
+                      color: _isHoveredAlbumId ? secondaryColor : senaryColor,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 8.0),
+          // Second TextFormField for adding album name
+          if (_isSecondFieldVisible)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              child: MouseRegion(
+                onEnter: (event) => setState(() {
+                  _isHoveredAlbumName = true;
+                }),
+                onExit: (event) => setState(() {
+                  _isHoveredAlbumName = false;
+                }),
+                child: TextFormField(
+                  style: const TextStyle(color: primaryTextColor),
+                  controller: _albumNameController,
+                  decoration: InputDecoration(
+                    contentPadding: const EdgeInsets.all(8),
+                    prefixIcon: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          onPressed: () {},
+                          icon: const Icon(
+                            Icons.album,
+                            color: primaryTextColor,
+                          ),
+                        ),
+                        const VerticalDivider(
+                          color: primaryTextColor,
+                          width: 1,
+                          thickness: 1,
+                        ),
+                        const SizedBox(width: 12),
+                      ],
+                    ),
+                    suffixIcon: _isTextFilled
+                        ? IconButton(
+                            onPressed: () {
+                              _submitAlbumData();
+                            },
+                            icon: const Icon(
+                              Icons.check,
+                              color: primaryTextColor,
+                            ),
+                          )
+                        : null,
+                    hintText: 'Album Name',
+                    hintStyle: const TextStyle(color: primaryTextColor),
+                    border: const OutlineInputBorder(
+                      borderSide: BorderSide(
+                        color: primaryTextColor,
+                      ),
+                    ),
+                    focusedBorder: const OutlineInputBorder(
+                      borderSide: BorderSide(
+                        color: secondaryColor,
+                      ),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderSide: BorderSide(
+                        color: _isHoveredAlbumName ? secondaryColor : senaryColor,
+                      ),
                     ),
                   ),
                 ),
@@ -202,13 +231,13 @@ class _SearchAlbumIdState extends State<SearchAlbumId> {
             child: FutureBuilder<List<Album>>(
               future: DatabaseHelper.instance.getAlbums(),
               builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(
-                    child: CircularProgressIndicator(
-                      color: primaryTextColor,
-                    ),
-                  );
-                }
+                // if (snapshot.connectionState == ConnectionState.waiting) {
+                //   return const Center(
+                //     child: CircularProgressIndicator(
+                //       color: primaryTextColor,
+                //     ),
+                //   );
+                // }
 
                 if (!snapshot.hasData || snapshot.data!.isEmpty) {
                   return const Center(
