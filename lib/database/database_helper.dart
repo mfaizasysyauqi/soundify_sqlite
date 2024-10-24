@@ -522,11 +522,11 @@ class DatabaseHelper {
   Future<User?> getCurrentUser() async {
     final db = await instance.database;
     final currentUserResult = await db.query('current_user');
-    // print("Current user query result: $currentUserResult");
+    print("Current user query result: $currentUserResult");
 
     if (currentUserResult.isNotEmpty) {
       String currentUserId = currentUserResult.first['userId'] as String;
-      // print("Current user ID: $currentUserId");
+      print("Current user ID: $currentUserId");
 
       // Query the users table with the currentUserId
       final userResult = await db.query(
@@ -534,7 +534,7 @@ class DatabaseHelper {
         where: 'userId = ?',
         whereArgs: [currentUserId],
       );
-      // print("User query result: $userResult");
+      print("User query result: $userResult");
 
       if (userResult.isNotEmpty) {
         return User.fromMap(userResult.first);
@@ -550,13 +550,13 @@ class DatabaseHelper {
   // This method can be kept as a utility, but it's not necessary for getting the current user
   Future<User?> getUserById(String userId) async {
     final db = await instance.database;
-    // print("Fetching user with ID: $userId");
+    print("Fetching user with ID: $userId");
     final result = await db.query(
       'users',
       where: 'userId = ?',
       whereArgs: [userId],
     );
-    // print("Query result: $result");
+    print("Query result: $result");
 
     if (result.isNotEmpty) {
       return User.fromMap(result.first);
