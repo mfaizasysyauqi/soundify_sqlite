@@ -6,13 +6,15 @@ class AlbumProvider with ChangeNotifier {
   String _albumId = '';
   String _creatorId = '';
   String _albumName = '';
-  String? _albumDescription;
-  String? _albumImageUrl;
+  String _albumDescription = '';
+  String _albumImageUrl = '';
   DateTime _timestamp = DateTime.now();
   int _albumUserIndex = 0;
-  List<String>? _songListIds = [];
-  List<String>? _albumLikeIds = [];
-  Duration? _totalDuration = Duration.zero;
+  List<String> _songListIds = [];
+  List<String> _albumLikeIds = [];
+  Duration _totalDuration = Duration.zero;
+
+  String _creatorName = '';
 
   bool _isFetching = false;
   bool _isFetched = false;
@@ -21,13 +23,15 @@ class AlbumProvider with ChangeNotifier {
   String get albumId => _albumId;
   String get creatorId => _creatorId;
   String get albumName => _albumName;
-  String? get albumDescription => _albumDescription;
-  String? get albumImageUrl => _albumImageUrl;
+  String get albumDescription => _albumDescription;
+  String get albumImageUrl => _albumImageUrl;
   DateTime get timestamp => _timestamp;
   int get albumUserIndex => _albumUserIndex;
-  List<String>? get songListIds => _songListIds;
-  List<String>? get albumLikeIds => _albumLikeIds;
+  List<String> get songListIds => _songListIds;
+  List<String> get albumLikeIds => _albumLikeIds;
   Duration? get totalDuration => _totalDuration;
+
+  String get creatorName => _creatorName;
 
   bool get isFetching => _isFetching;
   bool get isFetched => _isFetched;
@@ -48,43 +52,55 @@ class AlbumProvider with ChangeNotifier {
     _albumId = newAlbumId;
     _creatorId = newCreatorId;
     _albumName = newName;
-    _albumDescription = newDescription;
-    _albumImageUrl = newImageUrl;
+    _albumDescription = newDescription!;
+    _albumImageUrl = newImageUrl!;
     _timestamp = newTimestamp;
     _albumUserIndex = newAlbumUserIndex;
-    _songListIds = newSongListIds;
-    _albumLikeIds = newAlbumLikeIds;
-    _totalDuration = newTotalDuration;
+    _songListIds = newSongListIds!;
+    _albumLikeIds = newAlbumLikeIds!;
+    _totalDuration = newTotalDuration!;
 
     _isFetched = true;
     notifyListeners();
   }
 
-  Future<void> fetchAlbumById(String albumId) async {
-    if (_isFetching || (_isFetched && _albumId == albumId)) {
-      return;
-    }
-
-    if (_albumId != albumId) {
-      resetAlbum();
-    }
-
-    _albumId = albumId;
-    _isFetching = true;
+  void editAlbum(
+    String newName,
+    String? newDescription,
+    String? newImageUrl,
+  ) {
+    _albumName = newName;
+    _albumDescription = newDescription!;
+    _albumImageUrl = newImageUrl!;
+    _isFetched = true;
     notifyListeners();
-
+  }
+  
+  Future<void> fetchAlbumById(String albumId) async {
     try {
-      Album? album = await DatabaseHelper.instance.getAlbumByCreatorId(albumId);
+      final DatabaseHelper _databaseHelper = DatabaseHelper.instance;
+      final Album? album = await _databaseHelper.getAlbumById(albumId);
+
       if (album != null) {
-        _updateAlbumData(album);
+        _albumId = album.albumId;
+        _albumName = album.albumName;
+        _albumDescription = album.albumDescription;
+        _albumImageUrl = album.albumImageUrl;
+        _creatorId = album.creatorId;
+        _timestamp = album.timestamp;
+        _albumUserIndex = album.albumUserIndex;
+        _songListIds = album.songListIds;
+        _albumLikeIds = album.albumLikeIds;
+        _totalDuration = album.totalDuration;
+
+        notifyListeners();
       } else {
         throw Exception('Album not found');
       }
-    } catch (error) {
-      print('Error fetching album: $error');
-    } finally {
-      _isFetching = false;
-      notifyListeners();
+    } catch (e) {
+      print('Error fetching album: $e');
+      // You might want to handle the error differently
+      throw Exception('Failed to load album');
     }
   }
 

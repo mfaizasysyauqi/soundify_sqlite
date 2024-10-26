@@ -307,8 +307,23 @@ class _BottomContainerState extends State<BottomContainer> {
     setState(() {
       _isShuffleMode = !_isShuffleMode;
       if (_isShuffleMode) {
-        // Shuffle the playlist
-        _shuffledPlaylist.shuffle(Random());
+        // Get the current song
+        int currentSongIndex = _originalPlaylist
+            .indexWhere((song) => song.songUrl == _currentSongUrl);
+
+        // Create a temporary list without the current song
+        var tempList = List<Song>.from(_originalPlaylist);
+        if (currentSongIndex != -1) {
+          var currentSong = tempList.removeAt(currentSongIndex);
+
+          // Shuffle the remaining songs
+          tempList.shuffle(Random());
+
+          // Put the current song back at the beginning
+          _shuffledPlaylist = [currentSong, ...tempList];
+        } else {
+          _shuffledPlaylist = List.from(_originalPlaylist)..shuffle(Random());
+        }
       } else {
         // Restore original order
         _shuffledPlaylist = List.from(_originalPlaylist);
@@ -336,10 +351,16 @@ class _BottomContainerState extends State<BottomContainer> {
     final songProvider = Provider.of<SongProvider>(context, listen: false);
     final dbHelper = DatabaseHelper.instance;
 
+    // Use shuffled playlist if shuffle mode is on, otherwise use original playlist
+    List<Song> currentPlaylist =
+        _isShuffleMode ? _shuffledPlaylist : await dbHelper.getSongs();
+
     // Get current song index
     List<Song> songs = await dbHelper.getSongs();
+
+    // Get current song index
     int currentIndex =
-        songs.indexWhere((song) => song.songUrl == _currentSongUrl);
+        currentPlaylist.indexWhere((song) => song.songUrl == _currentSongUrl);
 
     // Calculate previous index
     int nextIndex = currentIndex - 1;
@@ -350,7 +371,7 @@ class _BottomContainerState extends State<BottomContainer> {
     if (songs.isNotEmpty && nextIndex < songs.length) {
       Song nextSong = songs[nextIndex];
 
-      // Update the song provider with new song details using setSong
+      // Update the song provider with new song details
       songProvider.setSong(
         nextSong.songId,
         nextSong.senderId,
@@ -365,9 +386,6 @@ class _BottomContainerState extends State<BottomContainer> {
         nextIndex,
       );
 
-      // The setSong method will trigger notifyListeners, so we don't need
-      // to explicitly call it
-
       // Save last listened song to current user
       User? currentUser = await dbHelper.getCurrentUser();
       if (currentUser != null) {
@@ -381,10 +399,16 @@ class _BottomContainerState extends State<BottomContainer> {
     final songProvider = Provider.of<SongProvider>(context, listen: false);
     final dbHelper = DatabaseHelper.instance;
 
+    // Use shuffled playlist if shuffle mode is on, otherwise use original playlist
+    List<Song> currentPlaylist =
+        _isShuffleMode ? _shuffledPlaylist : await dbHelper.getSongs();
+
     // Get current song index
     List<Song> songs = await dbHelper.getSongs();
+
+    // Get current song index
     int currentIndex =
-        songs.indexWhere((song) => song.songUrl == _currentSongUrl);
+        currentPlaylist.indexWhere((song) => song.songUrl == _currentSongUrl);
 
     // Calculate next index
     int previousIndex = currentIndex + 1;
@@ -392,7 +416,7 @@ class _BottomContainerState extends State<BottomContainer> {
     if (songs.isNotEmpty && previousIndex >= 0) {
       Song previousSong = songs[previousIndex];
 
-      // Update the song provider with new song details using setSong
+      // Update the song provider with new song details
       songProvider.setSong(
         previousSong.songId,
         previousSong.senderId,

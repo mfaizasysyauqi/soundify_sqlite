@@ -6,6 +6,8 @@ import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform;
 import 'package:soundify/provider/album_provider.dart';
 import 'package:soundify/provider/auth_provider.dart';
 import 'package:soundify/provider/image_provider.dart';
+import 'package:soundify/provider/like_provider.dart';
+import 'package:soundify/provider/song_list_item_provider.dart';
 import 'package:soundify/provider/song_provider.dart';
 import 'package:soundify/provider/widget_size_provider.dart';
 import 'package:soundify/provider/widget_state_provider_1.dart';
@@ -72,6 +74,8 @@ void main() async {
         ChangeNotifierProvider(create: (_) => SongProvider()),
         ChangeNotifierProvider(create: (_) => AlbumProvider()),
         ChangeNotifierProvider(create: (_) => ImageProviderData()),
+        ChangeNotifierProvider(create: (_) => SongListItemProvider()),
+        ChangeNotifierProvider(create: (_) => LikeProvider()),
       ],
       child: const MyApp(),
     ),

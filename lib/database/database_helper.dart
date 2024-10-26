@@ -63,6 +63,7 @@ class DatabaseHelper {
       songId TEXT PRIMARY KEY,
       senderId TEXT,
       artistId TEXT,
+      albumId TEXT,
       songTitle TEXT,
       songImageUrl TEXT,
       songUrl TEXT,
@@ -229,23 +230,40 @@ class DatabaseHelper {
   }
 
 // Define method to get album by albumId
+// Update the getAlbumById method to include all album details
   Future<Album?> getAlbumById(String? albumId) async {
-    Database db = await instance.database;
+    if (albumId == null) return null;
 
-    // Query the album where albumId matches
+    Database db = await instance.database;
     final List<Map<String, dynamic>> maps = await db.query(
       'albums',
       where: 'albumId = ?',
       whereArgs: [albumId],
     );
 
-    // Check if the result is not empty and return the first album found
     if (maps.isNotEmpty) {
-      return Album.fromMap(maps.first);
-    }
+      Album album = Album.fromMap(maps.first);
 
-    // Return null if no album is found
+      // Get creator (artist) details if needed
+      User? creator = await getUserById(album.creatorId);
+      if (creator != null) {
+        // You can add additional creator details to the album if needed
+        album.creatorName = creator.fullName;
+      }
+
+      return album;
+    }
     return null;
+  }
+
+  Future<void> updateAlbum(Album album) async {
+    final db = await database;
+    await db.update(
+      'albums',
+      album.toMap(),
+      where: 'albumId = ?',
+      whereArgs: [album.albumId],
+    );
   }
 
   // Get song by ID
@@ -426,13 +444,6 @@ class DatabaseHelper {
       return Album.fromMap(maps.first);
     }
     return null;
-  }
-
-  // Update Album
-  Future<int> updateAlbum(Album album) async {
-    Database db = await instance.database;
-    return await db.update('albums', album.toMap(),
-        where: 'albumId = ?', whereArgs: [album.albumId]);
   }
 
   // Delete Album
@@ -628,10 +639,28 @@ class DatabaseHelper {
       where: 'albumId = ?',
       whereArgs: [albumId],
     );
+    List<Song> albumIds = [];
+    for (var map in maps) {
+      Song song = Song.fromMap(map);
 
-    return List.generate(maps.length, (i) {
-      return Song.fromMap(maps[i]);
-    });
+      // Get artist details
+      User? artist = await getUserByArtistId(song.artistId);
+      if (artist != null) {
+        song.artistName = artist.fullName;
+        song.profileImageUrl = artist.profileImageUrl;
+        song.bioImageUrl = artist.bioImageUrl;
+      }
+
+      // Get album details using albumId instead of artistId
+      Album? album = await getAlbumById(song.albumId); // Updated here
+      if (album != null) {
+        song.albumName = album.albumName;
+      }
+
+      albumIds.add(song);
+    }
+
+    return albumIds;
   }
 
   // Get songs by playlist
@@ -654,7 +683,6 @@ class DatabaseHelper {
   }
 
   // Get liked songs
-// Get liked songs
   Future<List<Song>> getLikedSongs(String userId) async {
     Database db = await instance.database;
     final user = await getUserById(userId);

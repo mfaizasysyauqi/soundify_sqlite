@@ -1,15 +1,19 @@
 import 'dart:io';
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:soundify/components/hover_icons_widget.dart';
 import 'package:soundify/database/database_helper.dart';
 import 'package:soundify/models/song.dart';
 import 'package:soundify/models/user.dart';
+import 'package:soundify/provider/like_provider.dart';
+import 'package:soundify/provider/song_list_item_provider.dart';
 import 'package:soundify/provider/song_provider.dart';
 import 'package:soundify/provider/widget_state_provider_1.dart';
 import 'package:soundify/provider/widget_state_provider_2.dart';
+import 'package:soundify/view/container/primary/album_container.dart';
 import 'package:soundify/view/container/secondary/show_detail_song.dart';
-import 'package:soundify/view/container/secondary/song_menu.dart';
+import 'package:soundify/view/container/secondary/menu/song_menu.dart';
 import 'package:soundify/view/style/style.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
@@ -35,12 +39,6 @@ class SongList extends StatefulWidget {
 TextEditingController searchListController = TextEditingController();
 
 class _SongListState extends State<SongList> {
-  String? lastListenedSongId;
-  int _clickedIndex = -1;
-
-  List<Song> songs = [];
-  List<Song> filteredSongs = [];
-  bool isSearch = false;
   DatabaseHelper dbHelper = DatabaseHelper.instance;
 
   @override
@@ -48,40 +46,45 @@ class _SongListState extends State<SongList> {
     super.initState();
     _loadSongs();
     _fetchLastListenedSongId();
-    searchListController.addListener(() {
-      if (mounted) {
-        setState(() {
-          _filterSongs(); // Panggil metode filter setiap ada perubahan input
-        });
-      }
-    });
+    searchListController.addListener(_handleSearchChange);
+  }
+
+  @override
+  void dispose() {
+    searchListController.removeListener(_handleSearchChange);
+    super.dispose();
+  }
+
+  void _handleSearchChange() {
+    if (mounted) {
+      final provider =
+          Provider.of<SongListItemProvider>(context, listen: false);
+      provider.filterSongs(searchListController.text);
+    }
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
 
-    // Ensure this is inside a widget and the context is BuildContext
     final currentWidgetName =
         Provider.of<WidgetStateProvider1>(context, listen: true).widgetName;
-    bool wasSearch = isSearch;
+    final provider = Provider.of<SongListItemProvider>(context, listen: false);
+    bool wasSearch = provider.isSearch;
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      setState(() {
-        isSearch = currentWidgetName != "HomeContainer";
-        if (isSearch && !wasSearch) {
-          searchListController.clear();
-        }
-      });
+      provider.setIsSearch(currentWidgetName != "HomeContainer");
+      if (provider.isSearch && !wasSearch) {
+        searchListController.clear();
+      }
     });
   }
 
   Future<void> _fetchLastListenedSongId() async {
     User? currentUser = await dbHelper.getCurrentUser();
-    if (currentUser != null) {
-      setState(() {
-        lastListenedSongId = currentUser.lastListenedSongId;
-      });
+    if (currentUser != null && mounted) {
+      Provider.of<SongListItemProvider>(context, listen: false)
+          .setLastListenedSongId(currentUser.lastListenedSongId);
     }
   }
 
@@ -112,138 +115,49 @@ class _SongListState extends State<SongList> {
     }
 
     if (mounted) {
-      setState(() {
-        songs = fetchedSongs;
-        filteredSongs = songs;
-        if (lastListenedSongId != null) {
-          _clickedIndex =
-              songs.indexWhere((song) => song.songId == lastListenedSongId);
-        }
-      });
+      final provider =
+          Provider.of<SongListItemProvider>(context, listen: false);
+      provider.setSongs(fetchedSongs);
+
+      if (provider.lastListenedSongId != null) {
+        provider.setClickedIndex(fetchedSongs
+            .indexWhere((song) => song.songId == provider.lastListenedSongId));
+      }
     }
-  }
-
-  List<Song> _filterSongs() {
-    String query = searchListController.text.toLowerCase();
-    List<Song> songDocs = songs;
-
-    if (query.isEmpty) {
-      return songDocs; // Jika inputan kosong, tampilkan semua lagu
-    }
-
-    return songDocs.where((song) {
-      String songTitle = song.songTitle.toLowerCase();
-      String artistName = song.artistName?.toLowerCase() ?? '';
-      String albumName = song.albumName?.toLowerCase() ?? '';
-
-      // Periksa apakah inputan mengandung judul lagu, nama artis, atau nama album
-      return songTitle.contains(query) ||
-          artistName.contains(query) ||
-          albumName.contains(query);
-    }).toList();
   }
 
   @override
   Widget build(BuildContext context) {
-    Provider.of<SongProvider>(context);
+    return Consumer2<SongProvider, SongListItemProvider>(
+      builder: (context, songProvider, listProvider, child) {
+        List<Song> displayedSongs = listProvider.filteredSongs;
+        displayedSongs.sort((a, b) => b.timestamp.compareTo(a.timestamp));
 
-    List<Song> displayedSongs = _filterSongs();
-    displayedSongs.sort((a, b) => b.timestamp.compareTo(a.timestamp));
+        return ListView.builder(
+          itemCount: displayedSongs.length,
+          itemBuilder: (context, index) {
+            int reversedIndex = displayedSongs.length - 1 - index;
+            int ascendingIndex = index;
 
-    return ListView.builder(
-      itemCount: displayedSongs.length,
-      itemBuilder: (context, index) {
-        Song song = displayedSongs[index];
-        String formattedDate = DateFormat('MMM d, yyyy').format(song.timestamp);
-
-        // Menggunakan index terbalik untuk widget index
-        int reversedIndex = displayedSongs.length - 1 - index;
-        // Menambahkan original ascending index
-        int ascendingIndex = index;
-
-        return SongListItem(
-          index: reversedIndex,
-          originalIndex: ascendingIndex,
-          songId: song.songId,
-          senderId: song.senderId,
-          albumId: song.albumId,
-          songTitle: song.songTitle,
-          artistId: song.artistId,
-          artistName: song.artistName,
-          albumName: song.albumName,
-          artistSongIndex: song.artistSongIndex,
-          formattedDate: formattedDate,
-          songDuration: song.songDuration,
-          songUrl: song.songUrl,
-          profileImageUrl: song.profileImageUrl,
-          songImageUrl: song.songImageUrl,
-          bioImageUrl: song.bioImageUrl,
-          likedIds: song.likeIds,
-          playlistIds: song.playlistIds,
-          timestamp: song.timestamp,
-          isClicked: _clickedIndex == reversedIndex,
-          onItemTapped: (int tappedIndex) {
-            setState(() {
-              _clickedIndex = tappedIndex;
-              lastListenedSongId = displayedSongs[tappedIndex].songId;
-            });
+            return SongListItem(
+              index: reversedIndex,
+              originalIndex: ascendingIndex,
+            );
           },
-          isInitialSong: lastListenedSongId == song.songId,
         );
       },
     );
   }
 }
 
-// Widget terpisah untuk setiap item
 class SongListItem extends StatefulWidget {
   final int index;
   final int originalIndex;
-  final String artistId;
-  final String songId;
-  final String senderId;
-  final String albumId;
-  final String songTitle;
-  final String? artistName;
-  final String? albumName;
-  final int artistSongIndex;
-  final String formattedDate;
-  final Duration songDuration;
-  final String songUrl;
-  final String? profileImageUrl;
-  final String songImageUrl;
-  final String? bioImageUrl;
-  final List<String>? likedIds;
-  final List<String>? playlistIds;
-  final DateTime timestamp;
-  final bool isClicked; // This is received from the parent widget
-  final Function(int) onItemTapped; // Callback to notify parent
-  final bool isInitialSong;
 
   const SongListItem({
     super.key,
     required this.index,
     required this.originalIndex,
-    required this.songId,
-    required this.senderId,
-    required this.songTitle,
-    required this.artistId,
-    required this.artistName,
-    required this.albumId,
-    required this.albumName,
-    required this.artistSongIndex,
-    required this.formattedDate,
-    required this.songDuration,
-    required this.songUrl,
-    required this.profileImageUrl,
-    required this.songImageUrl,
-    required this.bioImageUrl,
-    required this.likedIds,
-    required this.playlistIds,
-    required this.timestamp,
-    required this.isClicked, // Add this to the constructor
-    required this.onItemTapped, // Add this to the constructor
-    required this.isInitialSong,
   });
 
   @override
@@ -251,10 +165,9 @@ class SongListItem extends StatefulWidget {
 }
 
 class _SongListItemState extends State<SongListItem> {
-  SongProvider? songProvider; // make nullable
+  SongProvider? songProvider;
   bool _isHovering = false;
-  bool _isLiked = false;
-// Function to change hovering state
+
   void _handleHoverChange(bool isHovering) {
     setState(() {
       _isHovering = isHovering;
@@ -264,9 +177,14 @@ class _SongListItemState extends State<SongListItem> {
   @override
   void initState() {
     super.initState();
-    _checkIfLiked();
+    final listProvider =
+        Provider.of<SongListItemProvider>(context, listen: false);
+    final song = listProvider.filteredSongs[widget.originalIndex];
+    Provider.of<LikeProvider>(context, listen: false).checkIfLiked(song.songId);
+
     songProvider = Provider.of<SongProvider>(context, listen: false);
-    if (widget.isInitialSong) {
+
+    if (song.songId == listProvider.lastListenedSongId) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _playSelectedSong();
       });
@@ -275,354 +193,349 @@ class _SongListItemState extends State<SongListItem> {
 
   Future<void> _checkIfLiked() async {
     final currentUser = await DatabaseHelper.instance.getCurrentUser();
-    if (currentUser != null && widget.likedIds != null) {
+    final listProvider =
+        Provider.of<SongListItemProvider>(context, listen: false);
+    final song = listProvider.filteredSongs[widget.originalIndex];
+
+    if (currentUser != null && song.likeIds != null) {
       if (mounted) {
-        setState(() {
-          _isLiked = widget.likedIds!.contains(currentUser.userId);
-        });
+        setState(() {});
       }
     }
   }
 
   void _playSelectedSong() async {
-    if (songProvider?.songId == widget.songId && songProvider!.isPlaying) {
+    final listProvider =
+        Provider.of<SongListItemProvider>(context, listen: false);
+    final song = listProvider.filteredSongs[widget.originalIndex];
+
+    if (songProvider?.songId == song.songId && songProvider!.isPlaying) {
       songProvider!.pauseOrResume();
     } else {
       songProvider!.stop();
       songProvider!.setSong(
-        widget.songId,
-        widget.senderId,
-        widget.artistId,
-        widget.songTitle,
-        widget.profileImageUrl,
-        widget.songImageUrl,
-        widget.bioImageUrl,
-        widget.artistName,
-        widget.songUrl,
-        widget.songDuration,
+        song.songId,
+        song.senderId,
+        song.artistId,
+        song.songTitle,
+        song.profileImageUrl,
+        song.songImageUrl,
+        song.bioImageUrl,
+        song.artistName,
+        song.songUrl,
+        song.songDuration,
         widget.index,
       );
       if (!mounted) return;
-      setState(() {}); // Rebuild the UI after song and bio are updated
+      setState(() {});
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
-    final formattedDuration = _formatDuration(widget.songDuration);
+    return Consumer<SongListItemProvider>(
+      builder: (context, listProvider, child) {
+        final song = listProvider.filteredSongs[widget.originalIndex];
+        final formattedDuration = _formatDuration(song.songDuration);
+        final formattedDate = DateFormat('MMM d, yyyy').format(song.timestamp);
+        final isClicked = listProvider.clickedIndex == widget.index;
 
-    return MouseRegion(
-      onEnter: (_) => setState(() => _isHovering = true),
-      onExit: (_) => setState(() => _isHovering = false),
-      child: GestureDetector(
-        onTap: () {
-          widget.onItemTapped(widget.index);
-          _playSelectedSong();
-          songProvider?.setShouldPlay(true);
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            Provider.of<WidgetStateProvider2>(context, listen: false)
-                .changeWidget(const ShowDetailSong(), 'ShowDetailSong');
-          });
-          
-        },
-        child: Container(
-          color: widget.isClicked
-              ? primaryTextColor.withOpacity(0.1)
-              : (_isHovering
-                  ? primaryTextColor.withOpacity(0.1)
-                  : Colors.transparent),
-          child: Table(
-            border: TableBorder.all(
-              color: transparentColor, // Warna border sementara untuk debugging
-              width: 1,
-            ),
-            columnWidths: {
-              0: const FixedColumnWidth(50), // Lebar tetap untuk nomor indeks
-              1: FlexColumnWidth(2), // Lebih besar untuk info lagu
-              2: screenWidth > 1280
-                  ? const FlexColumnWidth(2)
-                  : const FixedColumnWidth(0),
-              3: screenWidth > 1480
-                  ? const FlexColumnWidth(2)
-                  : const FixedColumnWidth(0),
-              4: const FixedColumnWidth(168), // Kontrol tombol suka dan durasi
+        return MouseRegion(
+          onEnter: (_) => setState(() => _isHovering = true),
+          onExit: (_) => setState(() => _isHovering = false),
+          child: GestureDetector(
+            onTap: () {
+              listProvider.setClickedIndex(widget.index);
+              listProvider.setLastListenedSongId(song.songId);
+              _playSelectedSong();
+              songProvider?.setShouldPlay(true);
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                Provider.of<WidgetStateProvider2>(context, listen: false)
+                    .changeWidget(const ShowDetailSong(), 'ShowDetailSong');
+              });
             },
-            children: [
-              TableRow(
-                children: [
-                  // Index number
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 8.0, vertical: 23),
-                    decoration: BoxDecoration(
-                      border:
-                          Border.all(color: transparentColor), // Border per sel
-                    ),
-                    child: _buildIndexNumber(), // Widget nomor indeks
-                  ),
-                  // Song info
-                  Container(
-                    padding: const EdgeInsets.all(
-                      8.0,
-                    ),
-                    decoration: BoxDecoration(
-                      border:
-                          Border.all(color: transparentColor), // Border per sel
-                    ),
-                    child: _buildSongInfo(screenWidth), // Widget informasi lagu
-                  ),
-                  // Album name (only on wider screens)
-                  if (screenWidth > 1280)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8.0, vertical: 23),
-                      decoration: BoxDecoration(
-                        border: Border.all(
-                            color: transparentColor), // Border per sel
-                      ),
-                      child: _buildAlbumName(screenWidth), // Widget nama album
-                    )
-                  else
-                    const SizedBox.shrink(), // Kosong jika layar kecil
-                  // Date (only on even wider screens)
-                  if (screenWidth > 1480)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8.0, vertical: 23),
-                      decoration: BoxDecoration(
-                        border: Border.all(
-                            color: transparentColor), // Border per sel
-                      ),
-                      child: _buildDate(), // Widget tanggal
-                    )
-                  else
-                    const SizedBox.shrink(), // Kosong jika layar kecil
-                  // Like button and duration
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                    decoration: BoxDecoration(
-                      border:
-                          Border.all(color: transparentColor), // Border per sel
-                    ),
-                    child: _buildControls(
-                        formattedDuration), // Widget tombol suka dan durasi
-                  ),
-                ],
+            child: Container(
+              color: isClicked
+                  ? primaryTextColor.withOpacity(0.1)
+                  : (_isHovering
+                      ? primaryTextColor.withOpacity(0.1)
+                      : Colors.transparent),
+              child: _buildListItem(
+                context,
+                screenWidth,
+                song,
+                isClicked,
+                formattedDuration,
+                formattedDate,
               ),
-            ],
+            ),
           ),
-        ),
+        );
+      },
+    );
+  }
+
+  Widget _buildListItem(
+    BuildContext context,
+    double screenWidth,
+    Song currentSong,
+    bool isClicked,
+    String formattedDuration,
+    String formattedDate,
+  ) {
+    return Container(
+      color: isClicked
+          ? primaryTextColor.withOpacity(0.1)
+          : (_isHovering
+              ? primaryTextColor.withOpacity(0.1)
+              : Colors.transparent),
+      child: Row(
+        children: [
+          _buildIndexNumber(),
+          Expanded(
+            flex: 2,
+            child: _buildSongInfo(screenWidth, currentSong),
+          ),
+          if (screenWidth > 1280)
+            Expanded(
+              flex: 2,
+              child: _buildAlbumName(screenWidth, currentSong),
+            ),
+          if (screenWidth > 1480)
+            Expanded(
+              flex: 2,
+              child: _buildDate(formattedDate),
+            ),
+          SizedBox(
+            width: 168,
+            child: _buildControls(
+              formattedDuration,
+              currentSong,
+              isClicked,
+            ),
+          ),
+        ],
       ),
     );
   }
 
   Widget _buildIndexNumber() {
-    return SizedBox(
-      width: 35,
-      child: Text(
-        widget.originalIndex + 1 > 1000
-            ? "𝅗𝅥"
-            : '${widget.originalIndex + 1}',
-        textAlign: TextAlign.right,
-        style: const TextStyle(
-          color: primaryTextColor,
-          fontWeight: mediumWeight,
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 23),
+      decoration: BoxDecoration(
+        border: Border.all(color: transparentColor),
+      ),
+      child: SizedBox(
+        width: 35,
+        child: Text(
+          widget.originalIndex + 1 > 1000
+              ? "𝅗𝅥"
+              : '${widget.originalIndex + 1}',
+          textAlign: TextAlign.right,
+          style: const TextStyle(
+            color: primaryTextColor,
+            fontWeight: mediumWeight,
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildSongInfo(double screenWidth) {
-    return Row(
-      children: [
-        // Song image
-        ClipRRect(
-          borderRadius: BorderRadius.circular(4),
-          child: SizedBox(
-            height: 50,
-            width: 50,
-            child: widget.songImageUrl.isNotEmpty
-                ? (Uri.tryParse(widget.songImageUrl)?.hasAbsolutePath ?? false
-                    ? Image.file(
-                        File(widget.songImageUrl), // Load local file
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) => Container(
+  Widget _buildSongInfo(double screenWidth, song) {
+    return Container(
+      padding: const EdgeInsets.all(8.0),
+      decoration: BoxDecoration(
+        border: Border.all(color: transparentColor),
+      ),
+      child: Row(
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: SizedBox(
+              height: 50,
+              width: 50,
+              child: song.songImageUrl.isNotEmpty
+                  ? (Uri.tryParse(song.songImageUrl)?.hasAbsolutePath ?? false
+                      ? Image.file(
+                          File(song.songImageUrl),
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) =>
+                              Container(
+                            color: Colors.grey,
+                            child: const Icon(Icons.broken_image,
+                                color: Colors.white),
+                          ),
+                        )
+                      : Container(
                           color: Colors.grey,
                           child: const Icon(Icons.broken_image,
                               color: Colors.white),
-                        ),
-                      )
-                    : Container(
-                        color: Colors.grey,
-                        child:
-                            const Icon(Icons.broken_image, color: Colors.white),
-                      ))
-                : const SizedBox.shrink(),
+                        ))
+                  : const SizedBox.shrink(),
+            ),
+          ),
+          const SizedBox(width: 10),
+          SizedBox(
+            width: screenWidth * 0.1,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  song.songTitle,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: primaryTextColor,
+                    fontWeight: mediumWeight,
+                    fontSize: smallFontSize,
+                  ),
+                ),
+                Text(
+                  song.artistName ?? '',
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: quaternaryTextColor,
+                    fontWeight: mediumWeight,
+                    fontSize: microFontSize,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAlbumName(double screenWidth, song) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 23),
+      decoration: BoxDecoration(
+        border: Border.all(color: transparentColor),
+      ),
+      child: SizedBox(
+        width: screenWidth * 0.125,
+        child: IntrinsicWidth(
+          child: RichText(
+            text: TextSpan(
+              text: song.albumName ?? '',
+              style: const TextStyle(
+                color: primaryTextColor,
+                fontWeight: mediumWeight,
+              ),
+              recognizer: TapGestureRecognizer()
+                ..onTap = () {
+                  Provider.of<WidgetStateProvider1>(context, listen: false)
+                      .changeWidget(
+                    AlbumContainer(albumId: song.albumId),
+                    'Album Container',
+                  );
+                },
+            ),
+            overflow: TextOverflow.ellipsis,
           ),
         ),
-        const SizedBox(width: 10),
-        // Song title and artist name
-        SizedBox(
-          width: screenWidth * 0.1,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+      ),
+    );
+  }
+
+  Widget _buildDate(String formattedDate) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 23),
+      decoration: BoxDecoration(
+        border: Border.all(color: transparentColor),
+      ),
+      child: SizedBox(
+        width: 82,
+        child: Text(
+          formattedDate,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(
+            color: primaryTextColor,
+            fontWeight: mediumWeight,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildControls(String formattedDuration, song, bool isClicked) {
+    final likeProvider = Provider.of<LikeProvider>(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8.0),
+      decoration: BoxDecoration(
+        border: Border.all(color: transparentColor),
+      ),
+      child: MouseRegion(
+        onEnter: (_) => setState(() => _isHovering = true),
+        onExit: (_) => setState(() => _isHovering = false),
+        child: SizedBox(
+          height: 66,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Text(
-                widget.songTitle,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: primaryTextColor,
-                  fontWeight: mediumWeight,
-                  fontSize: smallFontSize,
+              if (isClicked || _isHovering)
+                SizedBox(
+                  width: 45,
+                  child: GestureDetector(
+                    child: Icon(
+                      likeProvider.isLiked(song.songId)
+                          ? Icons.favorite
+                          : Icons.favorite_border,
+                      color: likeProvider.isLiked(song.songId)
+                          ? secondaryColor
+                          : primaryTextColor,
+                      size: smallFontSize,
+                    ),
+                    onTap: () async {
+                      await likeProvider.toggleLike(song.songId);
+                    },
+                  ),
+                )
+              else
+                const SizedBox(width: 45),
+              const SizedBox(width: 15),
+              SizedBox(
+                width: 45,
+                child: Text(
+                  formattedDuration,
+                  style: const TextStyle(
+                    color: primaryTextColor,
+                    fontWeight: mediumWeight,
+                  ),
                 ),
               ),
-              Text(
-                widget.artistName ?? '',
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: quaternaryTextColor,
-                  fontWeight: mediumWeight,
-                  fontSize: microFontSize,
-                ),
+              HoverIconsWidget(
+                isClicked: isClicked,
+                onItemTapped: (index) {
+                  Provider.of<WidgetStateProvider2>(context, listen: false)
+                      .changeWidget(
+                    SongMenu(
+                      onChangeWidget: (Widget) {},
+                      songId: song.songId,
+                      songUrl: song.songUrl,
+                      songImageUrl: song.songImageUrl,
+                      artistId: song.artistId,
+                      artistName: song.artistName,
+                      albumId: song.albumId,
+                      artistSongIndex: song.artistSongIndex,
+                      songTitle: song.songTitle,
+                      songDuration: song.songDuration,
+                      originalIndex: widget.originalIndex,
+                      likedIds: song.likeIds,
+                    ),
+                    'SongMenu',
+                  );
+                },
+                index: widget.index,
+                isHoveringParent: _isHovering,
+                onHoverChange: _handleHoverChange,
               ),
             ],
           ),
         ),
-      ],
-    );
-  }
-
-  Widget _buildAlbumName(double screenWidth) {
-    return SizedBox(
-      width: screenWidth * 0.125,
-      child: Text(
-        widget.albumName ?? '',
-        overflow: TextOverflow.ellipsis,
-        style: const TextStyle(
-          color: primaryTextColor,
-          fontWeight: mediumWeight,
-        ),
       ),
     );
-  }
-
-  Widget _buildDate() {
-    return SizedBox(
-      width: 82,
-      child: Text(
-        widget.formattedDate,
-        overflow: TextOverflow.ellipsis,
-        style: const TextStyle(
-          color: primaryTextColor,
-          fontWeight: mediumWeight,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildControls(String formattedDuration) {
-    return MouseRegion(
-      onEnter: (_) => setState(() => _isHovering = true),
-      onExit: (_) => setState(() => _isHovering = false),
-      child: SizedBox(
-        height: 66,
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Like button (visible on hover or if clicked)
-            if (widget.isClicked || _isHovering)
-              SizedBox(
-                width: 45,
-                child: GestureDetector(
-                  child: Icon(
-                    _isLiked ? Icons.favorite : Icons.favorite_border_outlined,
-                    color: _isLiked ? secondaryColor : primaryTextColor,
-                    size: smallFontSize,
-                  ),
-                  onTap: () {
-                    if (!mounted) return;
-                    setState(() {
-                      _isLiked = !_isLiked; // Toggle the value of _isLiked
-                      _onLikedChanged(_isLiked); 
-                    });
-                  },
-                ),
-              )
-            else
-              const SizedBox(width: 45),
-
-            const SizedBox(width: 15),
-
-            // Song duration
-            SizedBox(
-              width: 45,
-              child: Text(
-                formattedDuration,
-                style: const TextStyle(
-                  color: primaryTextColor,
-                  fontWeight: mediumWeight,
-                ),
-              ),
-            ),
-
-            // HoverIconsWidget
-            HoverIconsWidget(
-              isClicked: widget.isClicked,
-              onItemTapped: (index) {
-                Provider.of<WidgetStateProvider2>(context, listen: false)
-                    .changeWidget(
-                  SongMenu(
-                    onChangeWidget: (Widget) {},
-                    songId: widget.songId,
-                    songUrl: widget.songUrl,
-                    songImageUrl: widget.songImageUrl,
-                    artistId: widget.artistId,
-                    artistName: widget.artistName,
-                    albumId: widget.albumId,
-                    artistSongIndex: widget.artistSongIndex,
-                    songTitle: widget.songTitle,
-                    songDuration: widget.songDuration,
-                    originalIndex: widget.originalIndex,
-                    likedIds: widget.likedIds,
-                  ),
-                  'SongMenu',
-                );
-              },
-              index: widget.index,
-              isHoveringParent: _isHovering, // Pass hover state
-              onHoverChange:
-                  _handleHoverChange, // Pass callback to update hover state
-            ),
-          ],
-        ),
-      ),
-    );
-  } // In your widget class, replace the _onLikedChanged method with:
-
-  void _onLikedChanged(bool _isLiked) async {
-    // Get current user from DatabaseHelper
-    User? currentUser = await DatabaseHelper.instance.getCurrentUser();
-
-    if (currentUser == null) {
-      print('No user logged in');
-      return;
-    }
-
-    try {
-      bool newLikeStatus = await DatabaseHelper.instance.toggleSongLike(
-        widget.songId,
-        currentUser.userId,
-      );
-
-      // Update UI if needed
-      setState(() {
-        // Update local state to reflect new like status
-        _isLiked = newLikeStatus;
-      });
-    } catch (e) {
-      print('Error updating likes: $e');
-    }
   }
 
   String _formatDuration(Duration duration) {

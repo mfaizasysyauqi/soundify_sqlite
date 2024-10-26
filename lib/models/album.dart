@@ -2,28 +2,30 @@
 import 'dart:convert';
 
 class Album {
-  late String albumId;
+  final String albumId;
   final String creatorId;
-  final String albumName;
-  late String? albumDescription;
-  late String? albumImageUrl;
+  late final String albumName;
+  late final String albumDescription;
+  late final String albumImageUrl;
   final DateTime timestamp; // Use DateTime for timestamp
   final int albumUserIndex;
-  late List<String>? songListIds;
-  late List<String>? albumLikeIds;
-  late Duration? totalDuration;
+  late final List<String> songListIds;
+  final List<String> albumLikeIds;
+  late final Duration totalDuration;
+
+  String? creatorName;
 
   Album({
     required this.albumId,
     required this.creatorId,
     required this.albumName,
-    this.albumDescription,
-    this.albumImageUrl,
+    this.albumDescription = '', // Default empty string for nullable description
+    this.albumImageUrl = '', // Default empty string for nullable image URL
     required this.timestamp,
     required this.albumUserIndex,
-    this.songListIds,
-    this.albumLikeIds,
-    this.totalDuration,
+    required this.songListIds,
+    required this.albumLikeIds,
+    required this.totalDuration,
   });
 
   // Convert Album to a Map to store in SQLite
@@ -36,9 +38,10 @@ class Album {
       'albumImageUrl': albumImageUrl,
       'timestamp': timestamp.toIso8601String(), // Store DateTime as ISO string
       'albumUserIndex': albumUserIndex,
-      'songListIds': songListIds?.join(','), // Convert List to comma-separated String
-      'albumLikeIds': albumLikeIds?.join(','),
-      'totalDuration': totalDuration?.inSeconds, // Store Duration as seconds
+      'songListIds':
+          songListIds.join(','), // Convert List to comma-separated String
+      'albumLikeIds': albumLikeIds.join(','),
+      'totalDuration': totalDuration.inSeconds, // Store Duration as seconds
     };
   }
 
@@ -52,9 +55,15 @@ class Album {
       albumImageUrl: map['albumImageUrl'],
       timestamp: DateTime.parse(map['timestamp']), // Parse string to DateTime
       albumUserIndex: map['albumUserIndex'],
-      songListIds: map['songListIds'] != null ? (map['songListIds'] as String).split(',') : [],
-      albumLikeIds: map['albumLikeIds'] != null ? (map['albumLikeIds'] as String).split(',') : [],
-      totalDuration: map['totalDuration'] != null ? Duration(seconds: map['totalDuration']) : null,
+      songListIds: map['songListIds'] != null
+          ? (map['songListIds'] as String).split(',')
+          : [],
+      albumLikeIds: map['albumLikeIds'] != null
+          ? (map['albumLikeIds'] as String).split(',')
+          : [],
+      totalDuration: map['totalDuration'] != null
+          ? Duration(seconds: map['totalDuration'])
+          : Duration.zero,
     );
   }
 
@@ -71,8 +80,8 @@ class Album {
       albumId: '', // Empty string for albumId
       creatorId: '', // Empty string for creatorId
       albumName: '', // Empty string for albumName
-      albumDescription: null, // Null for optional description
-      albumImageUrl: null, // Null for optional image URL
+      albumDescription: '', // Null for optional description
+      albumImageUrl: '', // Null for optional image URL
       timestamp: DateTime.now(), // Current timestamp
       albumUserIndex: 0, // Default value
       songListIds: [], // Empty list for songListIds
