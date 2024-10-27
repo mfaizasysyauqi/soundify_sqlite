@@ -84,7 +84,10 @@ class _SearchAlbumIdState extends State<SearchAlbumId> {
             padding: EdgeInsets.all(8.0),
             child: Text(
               "Select Album ID",
-              style: TextStyle(color: primaryTextColor),
+              style: TextStyle(
+                color: primaryTextColor,
+                // fontWeight: FontWeight.bold,
+              ),
             ),
           ),
           // First TextFormField for search
@@ -147,7 +150,8 @@ class _SearchAlbumIdState extends State<SearchAlbumId> {
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderSide: BorderSide(
-                      color: _isHoveredAlbumId ? secondaryColor : senaryColor,
+                      color:
+                          _isHoveredAlbumId ? secondaryColor : primaryTextColor,
                     ),
                   ),
                 ),
@@ -214,7 +218,9 @@ class _SearchAlbumIdState extends State<SearchAlbumId> {
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderSide: BorderSide(
-                        color: _isHoveredAlbumName ? secondaryColor : senaryColor,
+                        color: _isHoveredAlbumName
+                            ? secondaryColor
+                            : primaryTextColor,
                       ),
                     ),
                   ),
@@ -224,7 +230,9 @@ class _SearchAlbumIdState extends State<SearchAlbumId> {
           const SizedBox(height: 8.0),
           const Padding(
             padding: EdgeInsets.symmetric(horizontal: 8.0),
-            child: Divider(),
+            child: Divider(
+              color: primaryTextColor,
+            ),
           ),
           // Expanded widget with FutureBuilder
           Expanded(

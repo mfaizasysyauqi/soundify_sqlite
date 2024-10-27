@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:soundify/database/database_helper.dart';
 import 'package:soundify/database/file_storage_helper.dart';
+import 'package:soundify/models/playlist.dart';
+import 'package:soundify/models/song.dart';
 import 'package:soundify/models/user.dart';
 import 'package:soundify/provider/widget_state_provider_1.dart';
 import 'package:soundify/provider/widget_state_provider_2.dart';
@@ -12,6 +14,8 @@ import 'package:soundify/view/container/secondary/show_detail_song.dart';
 import 'package:soundify/view/main_page.dart';
 import 'package:soundify/view/style/style.dart';
 import 'package:sqflite/sqflite.dart' show Transaction;
+import 'dart:math' as math;
+import 'package:uuid/uuid.dart';
 
 class SongMenu extends StatefulWidget {
   final Function(Widget) onChangeWidget;
@@ -49,11 +53,52 @@ class SongMenu extends StatefulWidget {
 
 class _SongMenuState extends State<SongMenu> {
   bool _isLiked = false; // Added missing _isLiked variable
+  late Song _song; // Add this field to store the Song object
+  bool _isAddToPlaylistMenuVisible = false;
+  bool _isCreatePlaylistVisible = false;
+  bool _isHoveredSearchPlaylist = false;
+
+  final TextEditingController _searchPlaylistController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     _checkIfLiked();
+    // Initialize the Song object from widget properties
+    _song = Song(
+      songId: widget.songId,
+      songUrl: widget.songUrl,
+      songImageUrl: widget.songImageUrl,
+      artistId: widget.artistId,
+      albumId: widget.albumId,
+      songTitle: widget.songTitle,
+      songDuration: widget.songDuration,
+      artistSongIndex: widget.artistSongIndex,
+      // Initialize other required fields with default values or null
+      senderId: '', // Add appropriate default value
+      timestamp: DateTime.now(),
+      likeIds: widget.likedIds ?? [],
+      playlistIds: [],
+      albumIds: [],
+      playedIds: [],
+    ); 
+    
+    // Add listener to controller
+    _searchPlaylistController.addListener(() {
+      if (mounted) {
+        setState(() {
+          // Trigger rebuild when search text changes
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    // Remove listener before disposing the controller
+    _searchPlaylistController.removeListener(() {});
+    // _searchPlaylistController.dispose();
+    super.dispose();
   }
 
   Future<void> _checkIfLiked() async {
@@ -197,189 +242,213 @@ class _SongMenuState extends State<SongMenu> {
             color: primaryTextColor,
           ),
         ),
-        Material(
-          color: Colors.transparent,
-          child: InkWell(
-            hoverColor: primaryTextColor.withOpacity(0.1),
-            onTap: () {
-              // Add to playlist action
-            },
-            child: const Padding(
-              padding: EdgeInsets.all(8.0),
-              child: SizedBox(
-                width: double.infinity,
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.add,
-                      color: primaryTextColor,
-                    ),
-                    SizedBox(width: 12),
-                    Text(
-                      "Add to Playlist",
-                      style: TextStyle(
-                        color: primaryTextColor,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-        Material(
-          color: Colors.transparent,
-          child: InkWell(
-            hoverColor: primaryTextColor.withOpacity(0.1),
-            onTap: () {
-              if (!mounted) return;
-              setState(() {
-                _isLiked = !_isLiked; // Toggle the value of _isLiked
-                _onLikedChanged(_isLiked);
-              });
-            },
-            child: Padding(
-              padding: const EdgeInsets.only(
-                  left: 11, right: 8.0, top: 10.0, bottom: 10.0),
-              child: SizedBox(
-                width: double.infinity,
-                child: Row(
-                  children: [
-                    Icon(
-                      _isLiked
-                          ? Icons.favorite
-                          : Icons.favorite_border_outlined,
-                      color: _isLiked ? secondaryColor : primaryTextColor,
-                      size: 18,
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Text(
-                        _isLiked
-                            ? "Remove from your Liked Songs"
-                            : "Save to your Liked Songs",
-                        style: const TextStyle(
-                          color: primaryTextColor,
-                          fontWeight: FontWeight.bold,
+        Expanded(
+          child: SingleChildScrollView(
+            child: Column(
+              children: [
+                Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    hoverColor: primaryTextColor.withOpacity(0.1),
+                    onTap: () {
+                      setState(() {
+                        _isAddToPlaylistMenuVisible =
+                            !_isAddToPlaylistMenuVisible; // Toggle antara true dan false
+                      });
+                    },
+                    child: Padding(
+                      padding: EdgeInsets.all(8.0),
+                      child: SizedBox(
+                        width: double.infinity,
+                        child: Row(
+                          children: [
+                            Transform.rotate(
+                              angle: _isAddToPlaylistMenuVisible
+                                  ? 0
+                                  : 3 * math.pi / 2,
+                              child: Icon(
+                                Icons.arrow_drop_down,
+                                color: primaryTextColor,
+                                size: 24.0,
+                              ),
+                            ),
+                            SizedBox(width: 12),
+                            Text(
+                              "Add to Playlist",
+                              style: TextStyle(
+                                color: primaryTextColor,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
                         ),
-                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                  ],
+                  ),
                 ),
-              ),
-            ),
-          ),
-        ),
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 8.0),
-          child: Divider(
-            thickness: 1,
-            color: primaryTextColor,
-          ),
-        ),
-        Material(
-          color: Colors.transparent,
-          child: InkWell(
-            hoverColor: primaryTextColor.withOpacity(0.1),
-            onTap: () {
-              final widgetStateProvider1 =
-                  Provider.of<WidgetStateProvider1>(context, listen: false);
-              final widgetStateProvider2 =
-                  Provider.of<WidgetStateProvider2>(context, listen: false);
+                _isAddToPlaylistMenuVisible
+                    ? _buildAddToPlaylistContainer(
+                        MediaQuery.of(context).size.width, _song)
+                    : SizedBox.shrink(),
+                Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    hoverColor: primaryTextColor.withOpacity(0.1),
+                    onTap: () {
+                      if (!mounted) return;
+                      setState(() {
+                        _isLiked = !_isLiked; // Toggle the value of _isLiked
+                        _onLikedChanged(_isLiked);
+                      });
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.only(
+                          left: 11, right: 8.0, top: 10.0, bottom: 10.0),
+                      child: SizedBox(
+                        width: double.infinity,
+                        child: Row(
+                          children: [
+                            Icon(
+                              _isLiked
+                                  ? Icons.favorite
+                                  : Icons.favorite_border_outlined,
+                              color:
+                                  _isLiked ? secondaryColor : primaryTextColor,
+                              size: 18,
+                            ),
+                            const SizedBox(width: 14),
+                            Expanded(
+                              child: Text(
+                                _isLiked
+                                    ? "Remove from your Liked Songs"
+                                    : "Save to your Liked Songs",
+                                style: const TextStyle(
+                                  color: primaryTextColor,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 8.0),
+                  child: Divider(
+                    thickness: 1,
+                    color: primaryTextColor,
+                  ),
+                ),
+                Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    hoverColor: primaryTextColor.withOpacity(0.1),
+                    onTap: () {
+                      final widgetStateProvider1 =
+                          Provider.of<WidgetStateProvider1>(context,
+                              listen: false);
+                      final widgetStateProvider2 =
+                          Provider.of<WidgetStateProvider2>(context,
+                              listen: false);
 
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                if (mounted) {
-                  widgetStateProvider1.changeWidget(
-                    EditSongContainer(
-                      onChangeWidget: (newWidget) {
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
                         if (mounted) {
-                          setState(() {
-                            activeWidget2 = const ShowImage();
-                          });
+                          widgetStateProvider1.changeWidget(
+                            EditSongContainer(
+                              onChangeWidget: (newWidget) {
+                                if (mounted) {
+                                  setState(() {
+                                    activeWidget2 = const ShowImage();
+                                  });
+                                }
+                              },
+                              songId: widget.songId,
+                              songUrl: widget.songUrl,
+                              songImageUrl: widget.songImageUrl,
+                              artistId: widget.artistId,
+                              artistSongIndex: widget.artistSongIndex,
+                              albumId: widget.albumId,
+                              songTitle: widget.songTitle,
+                              songDuration: widget.songDuration,
+                            ),
+                            'EditSongContainer',
+                          );
                         }
-                      },
-                      songId: widget.songId,
-                      songUrl: widget.songUrl,
-                      songImageUrl: widget.songImageUrl,
-                      artistId: widget.artistId,
-                      artistSongIndex: widget.artistSongIndex,
-                      albumId: widget.albumId,
-                      songTitle: widget.songTitle,
-                      songDuration: widget.songDuration,
-                    ),
-                    'EditSongContainer',
-                  );
-                }
-              });
+                      });
 
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                if (mounted) {
-                  widgetStateProvider2.changeWidget(
-                      const ShowDetailSong(), 'ShowDetailSong');
-                }
-              });
-            },
-            child: const Padding(
-              padding: EdgeInsets.all(8.0),
-              child: SizedBox(
-                width: double.infinity,
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.edit,
-                      color: primaryTextColor,
-                    ),
-                    SizedBox(width: 12),
-                    Text(
-                      "Edit Song",
-                      style: TextStyle(
-                        color: primaryTextColor,
-                        fontWeight: FontWeight.bold,
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        if (mounted) {
+                          widgetStateProvider2.changeWidget(
+                              const ShowDetailSong(), 'ShowDetailSong');
+                        }
+                      });
+                    },
+                    child: const Padding(
+                      padding: EdgeInsets.all(8.0),
+                      child: SizedBox(
+                        width: double.infinity,
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.edit,
+                              color: primaryTextColor,
+                            ),
+                            SizedBox(width: 12),
+                            Text(
+                              "Edit Song",
+                              style: TextStyle(
+                                color: primaryTextColor,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
-                  ],
+                  ),
                 ),
-              ),
-            ),
-          ),
-        ),
-        Material(
-          color: Colors.transparent,
-          child: InkWell(
-            hoverColor: primaryTextColor.withOpacity(0.1),
-            onTap: () {
-              _deleteSong(
-                widget.songId,
-                widget.songUrl,
-                widget.songImageUrl,
-                widget.artistSongIndex,
-              );
-              // print('ini adalah widget id ${widget.songId}');
-            },
-            child: const Padding(
-              padding: EdgeInsets.all(8.0),
-              child: SizedBox(
-                width: double.infinity,
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.delete,
-                      color: primaryTextColor,
-                    ),
-                    SizedBox(width: 12),
-                    Text(
-                      "Delete Song",
-                      style: TextStyle(
-                        color: primaryTextColor,
-                        fontWeight: FontWeight.bold,
+                Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    hoverColor: primaryTextColor.withOpacity(0.1),
+                    onTap: () {
+                      _deleteSong(
+                        widget.songId,
+                        widget.songUrl,
+                        widget.songImageUrl,
+                        widget.artistSongIndex,
+                      );
+                      // print('ini adalah widget id ${widget.songId}');
+                    },
+                    child: const Padding(
+                      padding: EdgeInsets.all(8.0),
+                      child: SizedBox(
+                        width: double.infinity,
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.delete,
+                              color: primaryTextColor,
+                            ),
+                            SizedBox(width: 12),
+                            Text(
+                              "Delete Song",
+                              style: TextStyle(
+                                color: primaryTextColor,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
                       ),
-                      overflow: TextOverflow.ellipsis,
                     ),
-                  ],
+                  ),
                 ),
-              ),
+              ],
             ),
           ),
         ),
@@ -464,6 +533,315 @@ class _SongMenuState extends State<SongMenu> {
         ),
       );
     }
+  }
+
+  Widget _buildAddToPlaylistContainer(double screenWidth, Song song) {
+    final DatabaseHelper _dbHelper = DatabaseHelper.instance;
+
+    return Container(
+      decoration: BoxDecoration(
+        border: Border.all(color: transparentColor),
+      ),
+      child: Material(
+        color: tertiaryColor,
+        child: Container(
+          height: 270,
+          padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 2.0),
+          decoration: BoxDecoration(
+            color: transparentColor,
+            borderRadius: BorderRadius.circular(4),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.3),
+                blurRadius: 10,
+                offset: const Offset(0, 5),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                child: SizedBox(
+                  height: 40,
+                  child: MouseRegion(
+                    onEnter: (event) => setState(() {
+                      _isHoveredSearchPlaylist = true;
+                    }),
+                    onExit: (event) => setState(() {
+                      _isHoveredSearchPlaylist = false;
+                    }),
+                    child: TextFormField(
+                      controller: _searchPlaylistController,
+                      readOnly: false,
+                      style: const TextStyle(color: primaryTextColor),
+                      decoration: InputDecoration(
+                        contentPadding: const EdgeInsets.all(8),
+                        prefixIcon: IconButton(
+                          onPressed: () {},
+                          icon: const Icon(
+                            Icons.search,
+                            color: primaryTextColor,
+                          ),
+                        ),
+                        suffixIcon: IconButton(
+                          onPressed: () {
+                            setState(() {
+                              _isCreatePlaylistVisible =
+                                  !_isCreatePlaylistVisible;
+                            });
+                          },
+                          icon: Icon(
+                            _isCreatePlaylistVisible ? Icons.remove : Icons.add,
+                            color: primaryTextColor,
+                          ),
+                        ),
+                        hintText: 'Search Playlist',
+                        hintStyle: const TextStyle(
+                          color: primaryTextColor,
+                          fontSize: tinyFontSize,
+                        ),
+                        border: const OutlineInputBorder(
+                          borderSide: BorderSide(
+                            color: primaryTextColor,
+                          ),
+                        ),
+                        focusedBorder: const OutlineInputBorder(
+                          borderSide: BorderSide(
+                            color: secondaryColor,
+                          ),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderSide: BorderSide(
+                            color: _isHoveredSearchPlaylist
+                                ? secondaryColor
+                                : primaryTextColor,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              _isCreatePlaylistVisible
+                  ? Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: () async {
+                          // Create new playlist functionality
+                          String currentUserId =
+                              (await _dbHelper.getCurrentUser())?.userId ?? '';
+                          // Ambil instance database SQLite
+                          final db = await DatabaseHelper.instance.database;
+
+                          // Ambil jumlah playlist yang ada di SQLite untuk menghitung `playlistUserIndex`
+                          final List<Map<String, dynamic>> existingPlaylists =
+                              await db.query(
+                            'playlists',
+                            where: 'creatorId = ?',
+                            whereArgs: [currentUserId],
+                          );
+
+                          int playlistUserIndex = existingPlaylists.length + 1;
+
+                          final playlistId = Uuid().v4();
+
+                          final newPlaylist = Playlist(
+                            playlistId:
+                                playlistId, // Menggunakan UUID sebagai playlistId
+                            creatorId: currentUserId,
+                            playlistName: "Playlist #$playlistUserIndex",
+                            playlistDescription: "",
+                            playlistImageUrl: "",
+                            timestamp: DateTime.now(),
+                            playlistUserIndex: playlistUserIndex,
+                            songListIds: [],
+                            playlistLikeIds: [],
+                            totalDuration: Duration.zero,
+                          );
+
+                          await _dbHelper.insertPlaylist(newPlaylist);
+
+                          // Update UI by calling setState if needed
+                          if (context.mounted) {
+                            setState(() {});
+                          }
+                        },
+                        hoverColor: primaryTextColor.withOpacity(0.1),
+                        child: const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 8.0),
+                          child: Row(
+                            children: [
+                              SizedBox(width: 16),
+                              Icon(
+                                Icons.playlist_add,
+                                color: primaryTextColor,
+                              ),
+                              SizedBox(width: 8),
+                              Text(
+                                "Create Playlist",
+                                style: TextStyle(
+                                  color: primaryTextColor,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: tinyFontSize,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    )
+                  : const SizedBox.shrink(),
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 8.0),
+                child: Divider(
+                  thickness: 1,
+                  color: primaryTextColor,
+                ),
+              ),
+              Expanded(
+                child: ValueListenableBuilder<TextEditingValue>(
+                  valueListenable: _searchPlaylistController,
+                  builder: (context, searchValue, _) {
+                    return FutureBuilder<List<Playlist>>(
+                      future: _dbHelper.getPlaylists().then((playlists) async {
+                        final currentUser = await _dbHelper.getCurrentUser();
+                        return playlists
+                            .where((playlist) =>
+                                playlist.creatorId == currentUser?.userId &&
+                                playlist.playlistName
+                                    .toLowerCase()
+                                    .contains(searchValue.text.toLowerCase()))
+                            .toList();
+                      }),
+                      builder: (context, snapshot) {
+                        if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                          return const Center(
+                            child: Text(
+                              'No playlists found',
+                              style: TextStyle(color: primaryTextColor),
+                            ),
+                          );
+                        }
+
+                        final playlists = snapshot.data!;
+                        playlists.sort((a, b) =>
+                            b.playlistUserIndex.compareTo(a.playlistUserIndex));
+
+                        return ListView.builder(
+                          itemCount: playlists.length,
+                          itemBuilder: (context, index) {
+                            final playlist = playlists[index];
+                            bool isHovered = false;
+
+                            return StatefulBuilder(
+                              builder: (context, setState) {
+                                return MouseRegion(
+                                  onEnter: (_) =>
+                                      setState(() => isHovered = true),
+                                  onExit: (_) =>
+                                      setState(() => isHovered = false),
+                                  child: Container(
+                                    color: isHovered
+                                        ? primaryTextColor.withOpacity(0.1)
+                                        : Colors.transparent,
+                                    child: ListTile(
+                                      contentPadding:
+                                          const EdgeInsets.symmetric(
+                                              vertical: 0.0, horizontal: 16.0),
+                                      title: Text(
+                                        playlist.playlistName,
+                                        style: const TextStyle(
+                                          color: primaryTextColor,
+                                          fontSize: tinyFontSize,
+                                        ),
+                                      ),
+                                      onTap: () async {
+                                        try {
+                                          // Add song to playlist
+                                          List<String> updatedSongList =
+                                              List<String>.from(
+                                                  playlist.songListIds ?? []);
+                                          updatedSongList.add(song.songId);
+
+                                          // Update playlist's total duration
+                                          Duration newTotalDuration =
+                                              (playlist.totalDuration) +
+                                                  song.songDuration;
+
+                                          // Update playlist
+                                          final updatedPlaylist = Playlist(
+                                            playlistId: playlist.playlistId,
+                                            creatorId: playlist.creatorId,
+                                            playlistName: playlist.playlistName,
+                                            playlistDescription:
+                                                playlist.playlistDescription,
+                                            playlistImageUrl:
+                                                playlist.playlistImageUrl,
+                                            timestamp: playlist.timestamp,
+                                            playlistUserIndex:
+                                                playlist.playlistUserIndex,
+                                            songListIds: updatedSongList,
+                                            totalDuration: newTotalDuration,
+                                          );
+
+                                          await _dbHelper
+                                              .updatePlaylist(updatedPlaylist);
+
+                                          // Update song's playlist IDs
+                                          List<String> updatedPlaylistIds =
+                                              List<String>.from(
+                                                  song.playlistIds ?? []);
+                                          updatedPlaylistIds
+                                              .add(playlist.playlistId);
+
+                                          final updatedSong = Song(
+                                            songId: song.songId,
+                                            senderId: song.senderId,
+                                            artistId: song.artistId,
+                                            albumId: song.albumId,
+                                            songTitle: song.songTitle,
+                                            songImageUrl: song.songImageUrl,
+                                            songUrl: song.songUrl,
+                                            songDuration: song.songDuration,
+                                            timestamp: song.timestamp,
+                                            artistSongIndex:
+                                                song.artistSongIndex,
+                                            likeIds: song.likeIds,
+                                            playlistIds: updatedPlaylistIds,
+                                            albumIds: song.albumIds,
+                                            playedIds: song.playedIds,
+                                          );
+
+                                          await _dbHelper
+                                              .updateSong(updatedSong);
+
+                                          print(
+                                              'Song added to playlist: ${playlist.playlistName}');
+                                        } catch (error) {
+                                          print(
+                                              'Error adding song to playlist: $error');
+                                        }
+                                      },
+                                    ),
+                                  ),
+                                );
+                              },
+                            );
+                          },
+                        );
+                      },
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 

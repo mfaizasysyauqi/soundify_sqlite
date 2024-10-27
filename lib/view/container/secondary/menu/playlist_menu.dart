@@ -190,7 +190,7 @@ class _PlaylistMenuState extends State<PlaylistMenu> {
                   Expanded(
                     // Menambahkan Expanded agar teks menyesuaikan ruang yang tersedia
                     child: Text(
-                      "Delete Playlist and Songs",
+                      "Delete Playlist",
                       style: TextStyle(
                         color: primaryTextColor,
                         fontWeight: FontWeight.bold,
@@ -492,10 +492,11 @@ class _PlaylistMenuState extends State<PlaylistMenu> {
     }
   }
 
+// In your widget class
   Future<void> _deletePlaylist(
       String playlistId, String playlistImageUrl) async {
     try {
-      // Delete the playlist
+      // Delete the playlist and update indexes
       await _databaseHelper.deletePlaylist(playlistId);
 
       // Update UI
@@ -507,6 +508,12 @@ class _PlaylistMenuState extends State<PlaylistMenu> {
       }
     } catch (e) {
       print("Error deleting playlist: $e");
+      // You might want to show an error message to the user here
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to delete playlist: ${e.toString()}')),
+        );
+      }
     }
   }
 }

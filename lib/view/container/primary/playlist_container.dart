@@ -273,7 +273,7 @@ class _PlaylistContainerState extends State<PlaylistContainer> {
                           body: SongList(
                             userId: currentUserId!,
                             pageName: "PlaylistContainer",
-                            playlistId: playlistProvider.playlistId,
+                            playlistId: widget.playlistId,
                             albumId: "",
                           ),
                         ),
@@ -465,7 +465,7 @@ class _PlaylistContainerState extends State<PlaylistContainer> {
                             color: transparentColor), // Border per sel
                       ),
                       child: const Text(
-                        "Playlist",
+                        "Album",
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           color: primaryTextColor,

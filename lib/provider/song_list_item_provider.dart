@@ -55,4 +55,10 @@ class SongListItemProvider with ChangeNotifier {
     }
     notifyListeners();
   }
+
+  void clearSongs() {
+    _songs.clear();
+    _filteredSongs.clear();
+    notifyListeners();
+  }
 }

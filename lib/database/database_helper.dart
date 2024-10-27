@@ -416,10 +416,44 @@ class DatabaseHelper {
   }
 
   // Delete Playlist
-  Future<int> deletePlaylist(String id) async {
-    Database db = await instance.database;
-    return await db
-        .delete('playlists', where: 'playlistId = ?', whereArgs: [id]);
+  Future<void> deletePlaylist(String playlistId) async {
+    final db = await instance.database;
+
+    // Start a transaction to ensure all operations complete together
+    await db.transaction((txn) async {
+      try {
+        // First get the playlistUserIndex of the playlist to be deleted
+        final List<Map<String, dynamic>> result = await txn.query(
+          'playlists',
+          columns: ['playlistUserIndex'],
+          where: 'playlistId = ?',
+          whereArgs: [playlistId],
+        );
+
+        if (result.isEmpty) {
+          throw Exception('Playlist not found');
+        }
+
+        final int deletedIndex = result.first['playlistUserIndex'];
+
+        // Delete the playlist
+        await txn.delete(
+          'playlists',
+          where: 'playlistId = ?',
+          whereArgs: [playlistId],
+        );
+
+        // Update playlistUserIndex for all playlists with higher index
+        await txn.rawUpdate('''
+        UPDATE playlists 
+        SET playlistUserIndex = playlistUserIndex - 1 
+        WHERE playlistUserIndex > ?
+      ''', [deletedIndex]);
+      } catch (e) {
+        print('Error in deletePlaylist transaction: $e');
+        rethrow;
+      }
+    });
   }
 
   // **************************** CRUD Operations for Albums ****************************
@@ -457,11 +491,45 @@ class DatabaseHelper {
   }
 
   // Delete Album
-  Future<int> deleteAlbum(String id) async {
-    Database db = await instance.database;
-    return await db.delete('albums', where: 'albumId = ?', whereArgs: [id]);
-  }
+  Future<void> deleteAlbum(String albumId) async {
+    final db = await instance.database;
 
+    // Start a transaction to ensure all operations complete together
+    await db.transaction((txn) async {
+      try {
+        // First get the albumUserIndex of the album to be deleted
+        final List<Map<String, dynamic>> result = await txn.query(
+          'albums',
+          columns: ['albumUserIndex'],
+          where: 'albumId = ?',
+          whereArgs: [albumId],
+        );
+
+        if (result.isEmpty) {
+          throw Exception('Album not found');
+        }
+
+        final int deletedIndex = result.first['albumUserIndex'];
+
+        // Delete the album
+        await txn.delete(
+          'albums',
+          where: 'albumId = ?',
+          whereArgs: [albumId],
+        );
+
+        // Update albumUserIndex for all albums with higher index
+        await txn.rawUpdate('''
+        UPDATE albums 
+        SET albumUserIndex = albumUserIndex - 1 
+        WHERE albumUserIndex > ?
+      ''', [deletedIndex]);
+      } catch (e) {
+        print('Error in deleteAlbum transaction: $e');
+        rethrow;
+      }
+    });
+  }
   // **************************** CRUD Operations for Users ****************************
 
   // Update insertUser method
@@ -673,10 +741,11 @@ class DatabaseHelper {
     return albumIds;
   }
 
-  // Get songs by playlist
+// Get songs by playlist
   Future<List<Song>> getSongsByPlaylist(String playlistId) async {
     Database db = await instance.database;
     final playlist = await getPlaylistById(playlistId);
+
     if (playlist != null && playlist.songListIds!.isNotEmpty) {
       final List<Map<String, dynamic>> maps = await db.query(
         'songs',
@@ -685,9 +754,26 @@ class DatabaseHelper {
         whereArgs: playlist.songListIds,
       );
 
-      return List.generate(maps.length, (i) {
-        return Song.fromMap(maps[i]);
-      });
+      List<Song> songs = [];
+      for (var map in maps) {
+        Song song = Song.fromMap(map);
+
+        // Get album details using albumId
+        Album? album = await getAlbumById(song.albumId);
+        if (album != null) {
+          song.albumName = album.albumName; // Set album name on the song
+        }
+
+        // Get artist details using artistId
+        User? artist = await getUserById(song.artistId);
+        if (artist != null) {
+          song.artistName = artist.fullName; // Set artist name on the song
+        }
+
+        songs.add(song);
+      }
+
+      return songs;
     }
     return [];
   }

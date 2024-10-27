@@ -50,6 +50,15 @@ class _SongListState extends State<SongList> {
   }
 
   @override
+  void didUpdateWidget(SongList oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Reload songs when playlistId changes
+    if (oldWidget.playlistId != widget.playlistId) {
+      _loadSongs();
+    }
+  }
+
+  @override
   void dispose() {
     if (mounted) {
       searchListController.removeListener(_handleSearchChange);
@@ -62,6 +71,14 @@ class _SongListState extends State<SongList> {
       final provider =
           Provider.of<SongListItemProvider>(context, listen: false);
       provider.filterSongs(searchListController.text);
+    }
+  }
+
+  Future<void> _fetchLastListenedSongId() async {
+    User? currentUser = await dbHelper.getCurrentUser();
+    if (currentUser != null && mounted) {
+      Provider.of<SongListItemProvider>(context, listen: false)
+          .setLastListenedSongId(currentUser.lastListenedSongId);
     }
   }
 
@@ -82,48 +99,50 @@ class _SongListState extends State<SongList> {
     });
   }
 
-  Future<void> _fetchLastListenedSongId() async {
-    User? currentUser = await dbHelper.getCurrentUser();
-    if (currentUser != null && mounted) {
-      Provider.of<SongListItemProvider>(context, listen: false)
-          .setLastListenedSongId(currentUser.lastListenedSongId);
-    }
-  }
-
   Future<void> _loadSongs() async {
     List<Song> fetchedSongs = [];
-    switch (widget.pageName) {
-      case "HomeContainer":
-        fetchedSongs = await dbHelper.getSongs();
-        break;
-      case "PersonalProfileContainer":
-      case "OtherProfileContainer":
-        fetchedSongs = await dbHelper.getSongsByArtist(widget.userId);
-        break;
-      case "AlbumContainer":
-        fetchedSongs = await dbHelper.getSongsByAlbum(widget.albumId);
-        break;
-      case "PlaylistContainer":
-        fetchedSongs = await dbHelper.getSongsByPlaylist(widget.playlistId);
-        break;
-      case "LikedSongContainer":
-        User? currentUser = await dbHelper.getCurrentUser();
-        if (currentUser != null) {
-          fetchedSongs = await dbHelper.getLikedSongs(currentUser.userId);
+    try {
+      switch (widget.pageName) {
+        case "HomeContainer":
+          fetchedSongs = await dbHelper.getSongs();
+          break;
+        case "PersonalProfileContainer":
+        case "OtherProfileContainer":
+          fetchedSongs = await dbHelper.getSongsByArtist(widget.userId);
+          break;
+        case "AlbumContainer":
+          fetchedSongs = await dbHelper.getSongsByAlbum(widget.albumId);
+          break;
+        case "PlaylistContainer":
+          fetchedSongs = await dbHelper.getSongsByPlaylist(widget.playlistId);
+          break;
+        case "LikedSongContainer":
+          User? currentUser = await dbHelper.getCurrentUser();
+          if (currentUser != null) {
+            fetchedSongs = await dbHelper.getLikedSongs(currentUser.userId);
+          }
+          break;
+        default:
+          fetchedSongs = await dbHelper.getSongs();
+      }
+
+      if (mounted) {
+        final provider =
+            Provider.of<SongListItemProvider>(context, listen: false);
+        // Clear existing songs before setting new ones
+        provider.clearSongs();
+        provider.setSongs(fetchedSongs);
+
+        if (provider.lastListenedSongId != null) {
+          provider.setClickedIndex(fetchedSongs.indexWhere(
+              (song) => song.songId == provider.lastListenedSongId));
         }
-        break;
-      default:
-        fetchedSongs = await dbHelper.getSongs();
-    }
-
-    if (mounted) {
-      final provider =
-          Provider.of<SongListItemProvider>(context, listen: false);
-      provider.setSongs(fetchedSongs);
-
-      if (provider.lastListenedSongId != null) {
-        provider.setClickedIndex(fetchedSongs
-            .indexWhere((song) => song.songId == provider.lastListenedSongId));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error loading songs: $e')),
+        );
       }
     }
   }
@@ -425,7 +444,7 @@ class _SongListItemState extends State<SongListItem> {
                 color: primaryTextColor,
                 fontWeight: mediumWeight,
               ),
-              recognizer:  TapGestureRecognizer()
+              recognizer: TapGestureRecognizer()
                 ..onTap = () {
                   Provider.of<WidgetStateProvider1>(context, listen: false)
                       .changeWidget(

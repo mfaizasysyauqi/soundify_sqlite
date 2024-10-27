@@ -82,7 +82,10 @@ class _SearchArtistIdState extends State<SearchArtistId> {
             padding: EdgeInsets.all(8.0),
             child: Text(
               "Select Artist ID",
-              style: TextStyle(color: primaryTextColor),
+              style: TextStyle(
+                color: primaryTextColor,
+                // fontWeight: FontWeight.bold,
+              ),
             ),
           ),
           Padding(
@@ -137,7 +140,9 @@ class _SearchArtistIdState extends State<SearchArtistId> {
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderSide: BorderSide(
-                      color: _isHoveredSearchArtist ? secondaryColor : senaryColor,
+                      color: _isHoveredSearchArtist
+                          ? secondaryColor
+                          : primaryTextColor,
                     ),
                   ),
                 ),
@@ -147,7 +152,9 @@ class _SearchArtistIdState extends State<SearchArtistId> {
           const SizedBox(height: 16.0),
           const Padding(
             padding: EdgeInsets.symmetric(horizontal: 8.0),
-            child: Divider(),
+            child: Divider(
+              color: primaryTextColor,
+            ),
           ),
           Expanded(
             child: FutureBuilder<List<Map<String, dynamic>>>(
