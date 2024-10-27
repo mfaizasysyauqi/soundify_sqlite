@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:soundify/database/database_helper.dart';
 import 'package:soundify/models/playlist.dart';
@@ -55,6 +56,152 @@ class _PlaylistContainerState extends State<PlaylistContainer> {
     });
   }
 
+  Future<void> _showPlaylistDescriptionModal(
+      BuildContext context, String creatorName) async {
+    // Access the PlaylistProvider
+    final playlistProvider =
+        Provider.of<PlaylistProvider>(context, listen: false);
+
+    _overlayEntry = OverlayEntry(
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) {
+          return Stack(
+            children: [
+              Positioned.fill(
+                child: GestureDetector(
+                  onTap: () {
+                    _closeModal();
+                  },
+                  child: Container(
+                    color: Colors.black.withOpacity(0.5),
+                  ),
+                ),
+              ),
+              Center(
+                child: Material(
+                  color: Colors.transparent,
+                  child: Container(
+                    width: 480,
+                    height: 300, // Adjust height as needed
+                    padding: const EdgeInsets.all(16.0),
+                    decoration: BoxDecoration(
+                      color: tertiaryColor,
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.3),
+                          blurRadius: 10,
+                          offset: const Offset(0, 5),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        Row(
+                          children: [
+                            // Song image
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(4),
+                              child: SizedBox(
+                                height: 50,
+                                width: 50,
+                                child: playlistProvider.playlistImageUrl.isEmpty
+                                    ? Container(
+                                        color: primaryTextColor,
+                                        child: Icon(Icons.library_music,
+                                            color: primaryColor, size: 25))
+                                    : Image.file(
+                                        File(playlistProvider.playlistImageUrl),
+                                        fit: BoxFit.cover,
+                                        errorBuilder:
+                                            (context, error, stackTrace) =>
+                                                Container(
+                                          color: senaryColor,
+                                          child: const Icon(Icons.broken_image,
+                                              color: Colors.white, size: 25),
+                                        ),
+                                      ),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            // Song title and artist name
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    playlistProvider.playlistName,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      color: primaryTextColor,
+                                      fontWeight: mediumWeight,
+                                      fontSize: smallFontSize,
+                                    ),
+                                  ),
+                                  creatorName.isNotEmpty
+                                      ? Text(
+                                          creatorName,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: const TextStyle(
+                                            color: quaternaryTextColor,
+                                            fontWeight: mediumWeight,
+                                            fontSize: microFontSize,
+                                          ),
+                                        )
+                                      : const SizedBox.shrink(),
+                                ],
+                              ),
+                            ),
+                            IconButton(
+                              onPressed: () {
+                                _closeModal();
+                              },
+                              icon: const Icon(
+                                Icons.close,
+                                color: primaryTextColor,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const Divider(
+                          thickness: 1,
+                          color: primaryTextColor,
+                        ),
+                        Expanded(
+                          // Make the scrollable area expand
+                          child: SingleChildScrollView(
+                            child: Text(
+                              playlistProvider.playlistDescription,
+                              style: const TextStyle(
+                                color: quaternaryTextColor,
+                                fontWeight: mediumWeight,
+                                fontSize: microFontSize,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+
+    Overlay.of(context).insert(_overlayEntry!); // Show overlay
+  }
+
+  void _closeModal() {
+    if (_overlayEntry != null) {
+      _overlayEntry!.remove(); // Hapus overlay
+      _overlayEntry = null;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -142,9 +289,11 @@ class _PlaylistContainerState extends State<PlaylistContainer> {
     );
   }
 
-  Widget _buildPlaylistHeader(PlaylistProvider playlistProvider, bool isMediumScreen) {
+  Widget _buildPlaylistHeader(
+      PlaylistProvider playlistProvider, bool isMediumScreen) {
     final widgetStateProvider2 =
         Provider.of<WidgetStateProvider2>(context, listen: false);
+
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -172,14 +321,29 @@ class _PlaylistContainerState extends State<PlaylistContainer> {
                 ),
               ),
               const SizedBox(height: 4),
-              Text(
-                playlistProvider.playlistDescription,
-                style: TextStyle(
-                  color: Colors.grey, // quaternaryTextColor
-                  fontSize: isMediumScreen ? 14 : 12, // smallFontSize
+              IntrinsicWidth(
+                child: RichText(
+                  text: TextSpan(
+                    text: playlistProvider.playlistDescription,
+                    style: TextStyle(
+                      color: senaryColor, // quaternaryTextColor
+                      fontWeight: mediumWeight,
+                      fontSize: isMediumScreen ? 14 : 12, // smallFontSize
+                    ),
+                    recognizer: TapGestureRecognizer()
+                      ..onTap = () async {
+                        // Fetch playlist data if needed
+                        Playlist? playlist = await _databaseHelper
+                            .getPlaylistById(playlistProvider.playlistId);
+                        if (playlist != null) {
+                          _showPlaylistDescriptionModal(
+                              context, playlist.creatorName ?? '');
+                        }
+                      },
+                  ),
+                  maxLines: isMediumScreen ? 2 : 4,
+                  overflow: TextOverflow.ellipsis,
                 ),
-                maxLines: isMediumScreen ? 2 : 4,
-                overflow: TextOverflow.ellipsis,
               ),
             ],
           ),
@@ -187,10 +351,9 @@ class _PlaylistContainerState extends State<PlaylistContainer> {
         IconButton(
           icon: const Icon(Icons.more_horiz, color: Colors.white),
           onPressed: () async {
-            // Make onPressed async
-            // First fetch the playlist data
             Playlist? playlist = await _databaseHelper.getPlaylistById(
-                playlistProvider.playlistId); // Assuming playlistProvider has playlistId
+                playlistProvider
+                    .playlistId); // Assuming playlistProvider has playlistId
 
             if (playlist != null) {
               WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -199,8 +362,7 @@ class _PlaylistContainerState extends State<PlaylistContainer> {
                     PlaylistMenu(
                       playlistName: playlistProvider.playlistName,
                       playlistImageUrl: playlistProvider.playlistImageUrl,
-                      creatorName: playlist.creatorName ??
-                          '', // Now we can use the creator name
+                      creatorName: playlist.creatorName ?? '',
                     ),
                     'PlaylistMenu',
                   );

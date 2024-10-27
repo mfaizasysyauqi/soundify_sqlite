@@ -194,6 +194,7 @@ class _SongMenuState extends State<SongMenu> {
           padding: EdgeInsets.symmetric(horizontal: 8.0),
           child: Divider(
             thickness: 1,
+            color: primaryTextColor,
           ),
         ),
         Material(
@@ -253,13 +254,16 @@ class _SongMenuState extends State<SongMenu> {
                       size: 18,
                     ),
                     const SizedBox(width: 14),
-                    Text(
-                      _isLiked
-                          ? "Remove from your Liked Songs"
-                          : "Save to your Liked Songs",
-                      style: const TextStyle(
-                        color: primaryTextColor,
-                        fontWeight: FontWeight.bold,
+                    Expanded(
+                      child: Text(
+                        _isLiked
+                            ? "Remove from your Liked Songs"
+                            : "Save to your Liked Songs",
+                        style: const TextStyle(
+                          color: primaryTextColor,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                   ],
@@ -272,6 +276,7 @@ class _SongMenuState extends State<SongMenu> {
           padding: EdgeInsets.symmetric(horizontal: 8.0),
           child: Divider(
             thickness: 1,
+            color: primaryTextColor,
           ),
         ),
         Material(
@@ -370,6 +375,7 @@ class _SongMenuState extends State<SongMenu> {
                         color: primaryTextColor,
                         fontWeight: FontWeight.bold,
                       ),
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ),

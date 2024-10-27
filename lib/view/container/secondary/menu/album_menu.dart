@@ -77,7 +77,7 @@ class _AlbumMenuState extends State<AlbumMenu> {
                           fit: BoxFit.cover,
                           errorBuilder: (context, error, stackTrace) =>
                               Container(
-                            color: Colors.grey,
+                            color: senaryColor,
                             child: const Icon(Icons.broken_image,
                                 color: Colors.white, size: 25),
                           ),
@@ -132,6 +132,7 @@ class _AlbumMenuState extends State<AlbumMenu> {
           padding: EdgeInsets.symmetric(horizontal: 8.0),
           child: Divider(
             thickness: 1,
+            color: primaryTextColor,
           ),
         ),
         Material(
@@ -186,11 +187,15 @@ class _AlbumMenuState extends State<AlbumMenu> {
                     color: primaryTextColor,
                   ),
                   SizedBox(width: 12),
-                  Text(
-                    "Delete Album and Songs",
-                    style: TextStyle(
-                      color: primaryTextColor,
-                      fontWeight: FontWeight.bold,
+                  Expanded(
+                    // Menambahkan Expanded agar teks menyesuaikan ruang yang tersedia
+                    child: Text(
+                      "Delete Playlist and Songs",
+                      style: TextStyle(
+                        color: primaryTextColor,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                 ],

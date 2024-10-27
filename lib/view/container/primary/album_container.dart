@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:soundify/database/database_helper.dart';
 import 'package:soundify/models/album.dart';
@@ -53,6 +54,152 @@ class _AlbumContainerState extends State<AlbumContainer> {
         SnackBar(content: Text('Error loading album: $error')),
       );
     });
+  }
+
+  Future<void> _showAlbumDescriptionModal(
+      BuildContext context, String creatorName) async {
+    // Access the AlbumProvider
+    final albumProvider = Provider.of<AlbumProvider>(context, listen: false);
+
+    _overlayEntry = OverlayEntry(
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) {
+          return Stack(
+            children: [
+              Positioned.fill(
+                child: GestureDetector(
+                  onTap: () {
+                    _closeModal();
+                  },
+                  child: Container(
+                    color: Colors.black.withOpacity(0.5),
+                  ),
+                ),
+              ),
+              Center(
+                child: Material(
+                  color: Colors.transparent,
+                  child: Container(
+                    width: 480,
+                    height: 300, // Adjust height as needed
+                    padding: const EdgeInsets.all(16.0),
+                    decoration: BoxDecoration(
+                      color: tertiaryColor,
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.3),
+                          blurRadius: 10,
+                          offset: const Offset(0, 5),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        Row(
+                          children: [
+                            // Song image
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(4),
+                              child: SizedBox(
+                                height: 50,
+                                width: 50,
+                                child: albumProvider.albumImageUrl.isEmpty
+                                    ? Container(
+                                        color: primaryTextColor,
+                                        child: Icon(Icons.library_music,
+                                            color: primaryColor, size: 25))
+                                    : Image.file(
+                                        File(albumProvider.albumImageUrl),
+                                        fit: BoxFit.cover,
+                                        errorBuilder:
+                                            (context, error, stackTrace) =>
+                                                Container(
+                                          color: senaryColor,
+                                          child: const Icon(Icons.broken_image,
+                                              color: Colors.white, size: 25),
+                                        ),
+                                      ),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            // Song title and artist name
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    albumProvider.albumName,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      color: primaryTextColor,
+                                      fontWeight: mediumWeight,
+                                      fontSize: smallFontSize,
+                                    ),
+                                  ),
+                                  creatorName.isNotEmpty
+                                      ? Text(
+                                          creatorName,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: const TextStyle(
+                                            color: quaternaryTextColor,
+                                            fontWeight: mediumWeight,
+                                            fontSize: microFontSize,
+                                          ),
+                                        )
+                                      : const SizedBox.shrink(),
+                                ],
+                              ),
+                            ),
+                            IconButton(
+                              onPressed: () {
+                                _closeModal();
+                              },
+                              icon: const Icon(
+                                Icons.close,
+                                color: primaryTextColor,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const Divider(
+                          thickness: 1,
+                          color: primaryTextColor,
+                        ),
+                        Expanded(
+                          // Make the scrollable area expand
+                          child: SingleChildScrollView(
+                            child: Text(
+                              albumProvider.albumDescription,
+                              style: const TextStyle(
+                                color: quaternaryTextColor,
+                                fontWeight: mediumWeight,
+                                fontSize: microFontSize,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+
+    Overlay.of(context).insert(_overlayEntry!); // Show overlay
+  }
+
+  void _closeModal() {
+    if (_overlayEntry != null) {
+      _overlayEntry!.remove(); // Hapus overlay
+      _overlayEntry = null;
+    }
   }
 
   @override
@@ -171,14 +318,29 @@ class _AlbumContainerState extends State<AlbumContainer> {
                 ),
               ),
               const SizedBox(height: 4),
-              Text(
-                albumProvider.albumDescription,
-                style: TextStyle(
-                  color: Colors.grey, // quaternaryTextColor
-                  fontSize: isMediumScreen ? 14 : 12, // smallFontSize
+              IntrinsicWidth(
+                child: RichText(
+                  text: TextSpan(
+                    text: albumProvider.albumDescription,
+                    style: TextStyle(
+                      color: senaryColor, // quaternaryTextColor
+                      fontWeight: mediumWeight,
+                      fontSize: isMediumScreen ? 14 : 12, // smallFontSize
+                    ),
+                    recognizer: TapGestureRecognizer()
+                      ..onTap = () async {
+                        // Fetch album data if needed
+                        Album? album = await _databaseHelper
+                            .getAlbumById(albumProvider.albumId);
+                        if (album != null) {
+                          _showAlbumDescriptionModal(
+                              context, album.creatorName ?? '');
+                        }
+                      },
+                  ),
+                  maxLines: isMediumScreen ? 2 : 4,
+                  overflow: TextOverflow.ellipsis,
                 ),
-                maxLines: isMediumScreen ? 2 : 4,
-                overflow: TextOverflow.ellipsis,
               ),
             ],
           ),

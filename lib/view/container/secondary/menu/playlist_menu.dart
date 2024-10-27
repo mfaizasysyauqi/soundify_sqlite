@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:soundify/database/database_helper.dart';
 import 'package:soundify/models/playlist.dart';
-import 'package:soundify/models/song.dart';
 import 'package:soundify/provider/playlist_provider.dart';
 import 'package:soundify/provider/widget_state_provider_1.dart';
 import 'package:soundify/provider/widget_state_provider_2.dart';
@@ -36,7 +35,8 @@ class _PlaylistMenuState extends State<PlaylistMenu> {
   @override
   Widget build(BuildContext context) {
     // Access the PlaylistProvider
-    final playlistProvider = Provider.of<PlaylistProvider>(context, listen: false);
+    final playlistProvider =
+        Provider.of<PlaylistProvider>(context, listen: false);
     return Column(
       children: <Widget>[
         Padding(
@@ -70,14 +70,14 @@ class _PlaylistMenuState extends State<PlaylistMenu> {
                   child: widget.playlistImageUrl.isEmpty
                       ? Container(
                           color: primaryTextColor,
-                          child:
-                              Icon(Icons.library_music, color: primaryColor, size: 25))
+                          child: Icon(Icons.library_music,
+                              color: primaryColor, size: 25))
                       : Image.file(
                           File(widget.playlistImageUrl),
                           fit: BoxFit.cover,
                           errorBuilder: (context, error, stackTrace) =>
                               Container(
-                            color: Colors.grey,
+                            color: senaryColor,
                             child: const Icon(Icons.broken_image,
                                 color: Colors.white, size: 25),
                           ),
@@ -132,6 +132,7 @@ class _PlaylistMenuState extends State<PlaylistMenu> {
           padding: EdgeInsets.symmetric(horizontal: 8.0),
           child: Divider(
             thickness: 1,
+            color: primaryTextColor,
           ),
         ),
         Material(
@@ -186,11 +187,15 @@ class _PlaylistMenuState extends State<PlaylistMenu> {
                     color: primaryTextColor,
                   ),
                   SizedBox(width: 12),
-                  Text(
-                    "Delete Playlist and Songs",
-                    style: TextStyle(
-                      color: primaryTextColor,
-                      fontWeight: FontWeight.bold,
+                  Expanded(
+                    // Menambahkan Expanded agar teks menyesuaikan ruang yang tersedia
+                    child: Text(
+                      "Delete Playlist and Songs",
+                      style: TextStyle(
+                        color: primaryTextColor,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                 ],
@@ -204,7 +209,8 @@ class _PlaylistMenuState extends State<PlaylistMenu> {
 
   void _showEditPlaylistModal(BuildContext context) {
     // Access the PlaylistProvider
-    final playlistProvider = Provider.of<PlaylistProvider>(context, listen: false);
+    final playlistProvider =
+        Provider.of<PlaylistProvider>(context, listen: false);
 
     // Controllers for TextFormField
     TextEditingController _playlistNameController =
@@ -304,7 +310,8 @@ class _PlaylistMenuState extends State<PlaylistMenu> {
                                   height: 140,
                                   decoration: BoxDecoration(
                                     color: _selectedImagePath == null &&
-                                            playlistProvider.playlistImageUrl.isEmpty
+                                            playlistProvider
+                                                .playlistImageUrl.isEmpty
                                         ? primaryTextColor
                                         : tertiaryColor,
                                     image: _selectedImagePath != null
@@ -314,7 +321,8 @@ class _PlaylistMenuState extends State<PlaylistMenu> {
                                             ),
                                             fit: BoxFit.cover,
                                           )
-                                        : playlistProvider.playlistImageUrl.isNotEmpty
+                                        : playlistProvider
+                                                .playlistImageUrl.isNotEmpty
                                             ? DecorationImage(
                                                 image: FileImage(
                                                   File(playlistProvider
@@ -325,7 +333,8 @@ class _PlaylistMenuState extends State<PlaylistMenu> {
                                             : null,
                                   ),
                                   child: _selectedImagePath == null &&
-                                          playlistProvider.playlistImageUrl.isEmpty
+                                          playlistProvider
+                                              .playlistImageUrl.isEmpty
                                       ? Icon(
                                           Icons.library_music,
                                           color: primaryColor,
@@ -394,28 +403,33 @@ class _PlaylistMenuState extends State<PlaylistMenu> {
                                           final newName =
                                               _playlistNameController.text;
                                           final newDescription =
-                                              _playlistDescriptionController.text;
+                                              _playlistDescriptionController
+                                                  .text;
                                           final newImagePath =
                                               _selectedImagePath ??
-                                                  playlistProvider.playlistImageUrl;
+                                                  playlistProvider
+                                                      .playlistImageUrl;
 
                                           // Create updated playlist object
                                           final updatedPlaylist = Playlist(
-                                            playlistId: playlistProvider.playlistId,
-                                            creatorId: playlistProvider.creatorId,
+                                            playlistId:
+                                                playlistProvider.playlistId,
+                                            creatorId:
+                                                playlistProvider.creatorId,
                                             playlistName: newName,
                                             playlistDescription: newDescription,
                                             playlistImageUrl: newImagePath,
-                                            timestamp: playlistProvider.timestamp,
-                                            playlistUserIndex:
-                                                playlistProvider.playlistUserIndex,
+                                            timestamp:
+                                                playlistProvider.timestamp,
+                                            playlistUserIndex: playlistProvider
+                                                .playlistUserIndex,
                                             songListIds:
                                                 playlistProvider.songListIds,
-                                            playlistLikeIds:
-                                                playlistProvider.playlistLikeIds,
-                                            totalDuration:
-                                                playlistProvider.totalDuration ??
-                                                    Duration.zero,
+                                            playlistLikeIds: playlistProvider
+                                                .playlistLikeIds,
+                                            totalDuration: playlistProvider
+                                                    .totalDuration ??
+                                                Duration.zero,
                                           );
 
                                           // Update playlist in database
@@ -478,16 +492,9 @@ class _PlaylistMenuState extends State<PlaylistMenu> {
     }
   }
 
-  Future<void> _deletePlaylist(String playlistId, String playlistImageUrl) async {
+  Future<void> _deletePlaylist(
+      String playlistId, String playlistImageUrl) async {
     try {
-      // Get songs in playlist
-      List<Song> playlistSongs = await _databaseHelper.getSongsByPlaylist(playlistId);
-
-      // Delete each song in the playlist
-      for (var song in playlistSongs) {
-        await _databaseHelper.deleteSong(song.songId);
-      }
-
       // Delete the playlist
       await _databaseHelper.deletePlaylist(playlistId);
 
