@@ -3,12 +3,12 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:soundify/database/database_helper.dart';
-import 'package:soundify/models/album.dart';
+import 'package:soundify/models/playlist.dart';
 import 'package:soundify/provider/widget_state_provider_2.dart';
 import 'package:soundify/utils/sticky_header_delegate.dart';
-import 'package:soundify/provider/album_provider.dart';
+import 'package:soundify/provider/playlist_provider.dart';
 import 'package:soundify/provider/widget_size_provider.dart';
-import 'package:soundify/view/container/secondary/menu/album_menu.dart';
+import 'package:soundify/view/container/secondary/menu/playlist_menu.dart';
 
 import 'package:soundify/view/style/style.dart';
 import 'package:provider/provider.dart';
@@ -16,44 +16,45 @@ import 'package:soundify/view/widget/song_list.dart';
 
 // Import the uuid package
 
-class AlbumContainer extends StatefulWidget {
-  final String albumId;
-  const AlbumContainer({super.key, required this.albumId});
+class PlaylistContainer extends StatefulWidget {
+  final String playlistId;
+  const PlaylistContainer({super.key, required this.playlistId});
 
   @override
-  State<AlbumContainer> createState() => _AlbumContainerState();
+  State<PlaylistContainer> createState() => _PlaylistContainerState();
 }
 
 bool showModal = false;
 OverlayEntry? _overlayEntry;
 Uint8List? _selectedImage;
 
-final TextEditingController _albumNameController = TextEditingController();
-final TextEditingController _albumDescriptionController =
+final TextEditingController _playlistNameController = TextEditingController();
+final TextEditingController _playlistDescriptionController =
     TextEditingController();
 
 final DatabaseHelper _databaseHelper = DatabaseHelper.instance;
 
-class _AlbumContainerState extends State<AlbumContainer> {
+class _PlaylistContainerState extends State<PlaylistContainer> {
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _loadAlbumData();
+      _loadPlaylistData();
     });
   }
 
-  // Function untuk memuat data album (jika perlu)
-  void _loadAlbumData() {
-    Provider.of<AlbumProvider>(context, listen: false)
-        .fetchAlbumById(widget.albumId)
+  // Function untuk memuat data playlist (jika perlu)
+  void _loadPlaylistData() {
+    Provider.of<PlaylistProvider>(context, listen: false)
+        .fetchPlaylistById(widget.playlistId)
         .catchError((error) {
       // Handle error, maybe show a snackbar
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error loading album: $error')),
+        SnackBar(content: Text('Error loading playlist: $error')),
       );
     });
   }
+
 
   @override
   Widget build(BuildContext context) {
@@ -63,18 +64,18 @@ class _AlbumContainerState extends State<AlbumContainer> {
       builder: (context, snapshot) {
         // if (snapshot.connectionState == ConnectionState.waiting) {
         //   // Show a loading indicator while fetching the user ID
-        //   return Center(child: CircularProgressIndicator());
+        //   return const Center(child: CircularProgressIndicator());
         // }
         if (snapshot.hasError || !snapshot.hasData) {
           // Handle the error or the case where no user ID is available
-          return Center(child: Text('Error fetching user ID'));
+          return const Center(child: Text('Error fetching user ID'));
         }
 
         // Extract the user ID from the snapshot
         final currentUserId = snapshot.data;
 
-        return Consumer<AlbumProvider>(
-          builder: (context, albumProvider, child) {
+        return Consumer<PlaylistProvider>(
+          builder: (context, playlistProvider, child) {
             return LayoutBuilder(
               builder: (context, constraints) {
                 final screenWidth = MediaQuery.of(context).size.width;
@@ -108,8 +109,8 @@ class _AlbumContainerState extends State<AlbumContainer> {
                                     Padding(
                                       padding: const EdgeInsets.symmetric(
                                           horizontal: 8.0),
-                                      child: _buildAlbumHeader(
-                                          albumProvider, isMediumScreen),
+                                      child: _buildPlaylistHeader(
+                                          playlistProvider, isMediumScreen),
                                     ),
                                   ],
                                 ),
@@ -124,9 +125,9 @@ class _AlbumContainerState extends State<AlbumContainer> {
                           },
                           body: SongList(
                             userId: currentUserId!,
-                            pageName: "AlbumContainer",
-                            playlistId: "",
-                            albumId: albumProvider.albumId,
+                            pageName: "PlaylistContainer",
+                            playlistId: playlistProvider.playlistId,
+                            albumId: "",
                           ),
                         ),
                       ),
@@ -141,13 +142,13 @@ class _AlbumContainerState extends State<AlbumContainer> {
     );
   }
 
-  Widget _buildAlbumHeader(AlbumProvider albumProvider, bool isMediumScreen) {
+  Widget _buildPlaylistHeader(PlaylistProvider playlistProvider, bool isMediumScreen) {
     final widgetStateProvider2 =
         Provider.of<WidgetStateProvider2>(context, listen: false);
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildAlbumImage(albumProvider),
+        _buildPlaylistImage(playlistProvider),
         SizedBox(width: isMediumScreen ? 16 : 8),
         Expanded(
           child: Column(
@@ -155,12 +156,12 @@ class _AlbumContainerState extends State<AlbumContainer> {
             children: [
               Padding(
                 padding: EdgeInsets.only(
-                  top: albumProvider.albumDescription.isNotEmpty
+                  top: playlistProvider.playlistDescription.isNotEmpty
                       ? 0.0
                       : (isMediumScreen ? 28.0 : 38.0),
                 ),
                 child: Text(
-                  albumProvider.albumName,
+                  playlistProvider.playlistName,
                   style: TextStyle(
                     color: Colors.white, // primaryTextColor
                     fontSize: isMediumScreen ? 50 : 30,
@@ -172,7 +173,7 @@ class _AlbumContainerState extends State<AlbumContainer> {
               ),
               const SizedBox(height: 4),
               Text(
-                albumProvider.albumDescription,
+                playlistProvider.playlistDescription,
                 style: TextStyle(
                   color: Colors.grey, // quaternaryTextColor
                   fontSize: isMediumScreen ? 14 : 12, // smallFontSize
@@ -187,21 +188,21 @@ class _AlbumContainerState extends State<AlbumContainer> {
           icon: const Icon(Icons.more_horiz, color: Colors.white),
           onPressed: () async {
             // Make onPressed async
-            // First fetch the album data
-            Album? album = await _databaseHelper.getAlbumById(
-                albumProvider.albumId); // Assuming albumProvider has albumId
+            // First fetch the playlist data
+            Playlist? playlist = await _databaseHelper.getPlaylistById(
+                playlistProvider.playlistId); // Assuming playlistProvider has playlistId
 
-            if (album != null) {
+            if (playlist != null) {
               WidgetsBinding.instance.addPostFrameCallback((_) {
                 if (mounted) {
                   widgetStateProvider2.changeWidget(
-                    AlbumMenu(
-                      albumName: albumProvider.albumName,
-                      albumImageUrl: albumProvider.albumImageUrl,
-                      creatorName: album.creatorName ??
+                    PlaylistMenu(
+                      playlistName: playlistProvider.playlistName,
+                      playlistImageUrl: playlistProvider.playlistImageUrl,
+                      creatorName: playlist.creatorName ??
                           '', // Now we can use the creator name
                     ),
-                    'AlbumMenu',
+                    'PlaylistMenu',
                   );
                 }
               });
@@ -212,8 +213,8 @@ class _AlbumContainerState extends State<AlbumContainer> {
     );
   }
 
-  Widget _buildAlbumImage(AlbumProvider albumProvider) {
-    String albumImageUrl = albumProvider.albumImageUrl;
+  Widget _buildPlaylistImage(PlaylistProvider playlistProvider) {
+    String playlistImageUrl = playlistProvider.playlistImageUrl;
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(20),
@@ -221,12 +222,12 @@ class _AlbumContainerState extends State<AlbumContainer> {
         width: 120,
         height: 120,
         decoration: BoxDecoration(
-          color: albumImageUrl == '' ? primaryTextColor : tertiaryColor,
+          color: playlistImageUrl == '' ? primaryTextColor : tertiaryColor,
         ),
-        child: albumImageUrl == ''
-            ? Icon(Icons.album, color: primaryColor, size: 60)
+        child: playlistImageUrl == ''
+            ? Icon(Icons.library_music, color: primaryColor, size: 60)
             : Image.file(
-                File(albumImageUrl), // Convert String to File
+                File(playlistImageUrl), // Convert String to File
                 fit: BoxFit.cover,
                 errorBuilder: (context, error, stackTrace) => Container(
                   color: Colors.grey,
@@ -302,7 +303,7 @@ class _AlbumContainerState extends State<AlbumContainer> {
                             color: transparentColor), // Border per sel
                       ),
                       child: const Text(
-                        "Album",
+                        "Playlist",
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           color: primaryTextColor,
@@ -375,8 +376,8 @@ class _AlbumContainerState extends State<AlbumContainer> {
 
   @override
   void dispose() {
-    _albumNameController.dispose();
-    _albumDescriptionController.dispose();
+    _playlistNameController.dispose();
+    _playlistDescriptionController.dispose();
     _overlayEntry?.remove();
     super.dispose();
   }

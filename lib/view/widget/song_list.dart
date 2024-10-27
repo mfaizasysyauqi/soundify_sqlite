@@ -51,7 +51,9 @@ class _SongListState extends State<SongList> {
 
   @override
   void dispose() {
-    searchListController.removeListener(_handleSearchChange);
+    if (mounted) {
+      searchListController.removeListener(_handleSearchChange);
+    }
     super.dispose();
   }
 
@@ -423,7 +425,7 @@ class _SongListItemState extends State<SongListItem> {
                 color: primaryTextColor,
                 fontWeight: mediumWeight,
               ),
-              recognizer: TapGestureRecognizer()
+              recognizer:  TapGestureRecognizer()
                 ..onTap = () {
                   Provider.of<WidgetStateProvider1>(context, listen: false)
                       .changeWidget(

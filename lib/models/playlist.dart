@@ -11,7 +11,9 @@ class Playlist {
   final int playlistUserIndex;
   late List<String>? songListIds;
   late List<String>? playlistLikeIds;
-  late Duration? totalDuration;
+  late final Duration totalDuration;
+
+  String? creatorName;
 
   Playlist({
     required this.playlistId,
@@ -23,7 +25,7 @@ class Playlist {
     required this.playlistUserIndex,
     this.songListIds,
     this.playlistLikeIds,
-    this.totalDuration,
+    required this.totalDuration,
   });
 
   // Convert Playlist to a Map to store in SQLite
@@ -36,9 +38,10 @@ class Playlist {
       'playlistImageUrl': playlistImageUrl,
       'timestamp': timestamp.toIso8601String(), // Store DateTime as ISO string
       'playlistUserIndex': playlistUserIndex,
-      'songListIds': songListIds?.join(','), // Convert List to comma-separated String
+      'songListIds':
+          songListIds?.join(','), // Convert List to comma-separated String
       'playlistLikeIds': playlistLikeIds?.join(','),
-      'totalDuration': totalDuration?.inSeconds, // Store Duration as seconds
+      'totalDuration': totalDuration.inSeconds, // Store Duration as seconds
     };
   }
 
@@ -52,9 +55,15 @@ class Playlist {
       playlistImageUrl: map['playlistImageUrl'],
       timestamp: DateTime.parse(map['timestamp']), // Parse string to DateTime
       playlistUserIndex: map['playlistUserIndex'],
-      songListIds: map['songListIds'] != null ? (map['songListIds'] as String).split(',') : [],
-      playlistLikeIds: map['playlistLikeIds'] != null ? (map['playlistLikeIds'] as String).split(',') : [],
-      totalDuration: map['totalDuration'] != null ? Duration(seconds: map['totalDuration']) : null,
+      songListIds: map['songListIds'] != null
+          ? (map['songListIds'] as String).split(',')
+          : [],
+      playlistLikeIds: map['playlistLikeIds'] != null
+          ? (map['playlistLikeIds'] as String).split(',')
+          : [],
+      totalDuration: map['totalDuration'] != null
+          ? Duration(seconds: map['totalDuration'])
+          : Duration.zero,
     );
   }
 

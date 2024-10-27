@@ -69,7 +69,6 @@ class DatabaseHelper {
       songUrl TEXT,
       songDuration INTEGER,
       timestamp TEXT,
-      albumId TEXT,
       artistSongIndex INTEGER,
       likeIds TEXT,
       playlistIds TEXT,
@@ -376,24 +375,35 @@ class DatabaseHelper {
         conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
-  // Get all playlists
+  // Mendapatkan semua playlists dari SQLite
   Future<List<Playlist>> getPlaylists() async {
     Database db = await instance.database;
     final List<Map<String, dynamic>> maps = await db.query('playlists');
-
     return List.generate(maps.length, (i) {
       return Playlist.fromMap(maps[i]);
     });
   }
 
-  // Get playlist by ID
+  // Mendapatkan playlist berdasarkan ID dari SQLite
   Future<Playlist?> getPlaylistById(String id) async {
     Database db = await instance.database;
-    final List<Map<String, dynamic>> maps =
-        await db.query('playlists', where: 'playlistId = ?', whereArgs: [id]);
+    final List<Map<String, dynamic>> maps = await db.query(
+      'playlists',
+      where: 'playlistId = ?',
+      whereArgs: [id],
+    );
 
     if (maps.isNotEmpty) {
-      return Playlist.fromMap(maps.first);
+      Playlist playlist = Playlist.fromMap(maps.first);
+
+      // Get creator (artist) details if needed
+      User? creator = await getUserById(playlist.creatorId);
+      if (creator != null) {
+        // You can add additional creator details to the playlist if needed
+        playlist.creatorName = creator.fullName;
+      }
+
+      return playlist;
     }
     return null;
   }
@@ -533,11 +543,11 @@ class DatabaseHelper {
   Future<User?> getCurrentUser() async {
     final db = await instance.database;
     final currentUserResult = await db.query('current_user');
-    print("Current user query result: $currentUserResult");
+    // print("Current user query result: $currentUserResult");
 
     if (currentUserResult.isNotEmpty) {
       String currentUserId = currentUserResult.first['userId'] as String;
-      print("Current user ID: $currentUserId");
+      // print("Current user ID: $currentUserId");
 
       // Query the users table with the currentUserId
       final userResult = await db.query(
@@ -545,7 +555,7 @@ class DatabaseHelper {
         where: 'userId = ?',
         whereArgs: [currentUserId],
       );
-      print("User query result: $userResult");
+      // print("User query result: $userResult");
 
       if (userResult.isNotEmpty) {
         return User.fromMap(userResult.first);
@@ -561,13 +571,13 @@ class DatabaseHelper {
   // This method can be kept as a utility, but it's not necessary for getting the current user
   Future<User?> getUserById(String userId) async {
     final db = await instance.database;
-    print("Fetching user with ID: $userId");
+    // print("Fetching user with ID: $userId");
     final result = await db.query(
       'users',
       where: 'userId = ?',
       whereArgs: [userId],
     );
-    print("Query result: $result");
+    // print("Query result: $result");
 
     if (result.isNotEmpty) {
       return User.fromMap(result.first);
@@ -774,5 +784,65 @@ class DatabaseHelper {
     await fileStorageHelper.writeData('songs.json', {'songs': []});
     await fileStorageHelper.writeData('playlists.json', {'playlists': []});
     await fileStorageHelper.writeData('albums.json', {'albums': []});
+  }
+
+  /// Initializes and retrieves all necessary data from the database
+  Future<Map<String, dynamic>> initializeAllData() async {
+    try {
+      // Get current user first
+      final currentUser = await getCurrentUser();
+
+      if (currentUser == null) {
+        return {
+          'currentUser': null,
+          'users': [],
+          'songs': [],
+          'playlists': [],
+          'albums': [],
+          'userLikedSongs': [],
+          'userSongs': [],
+          'albumSongs': []
+        };
+      }
+
+      // Get all basic data
+      final List<Map<String, dynamic>> users = await getUsers();
+      final List<Song> allSongs = await getSongs();
+      final List<Playlist> playlists = await getPlaylists();
+      final List<Album> albums = await getAlbums();
+
+      // Get user-specific data
+      final List<Song> likedSongs = await getLikedSongs(currentUser.userId);
+      final List<Song> userSongs = await getSongsByArtist(currentUser.userId);
+
+      // Get songs for each album
+      Map<String, List<Song>> albumSongs = {};
+      for (var album in albums) {
+        albumSongs[album.albumId] = await getSongsByAlbum(album.albumId);
+      }
+
+      // Get songs for each playlist
+      Map<String, List<Song>> playlistSongs = {};
+      for (var playlist in playlists) {
+        playlistSongs[playlist.playlistId] =
+            await getSongsByPlaylist(playlist.playlistId);
+      }
+
+      // Return all data in a structured map
+      return {
+        'currentUser': currentUser,
+        'users': users,
+        'songs': allSongs,
+        'playlists': playlists,
+        'albums': albums,
+        'userLikedSongs': likedSongs,
+        'userSongs': userSongs,
+        'albumSongs': albumSongs,
+        'playlistSongs': playlistSongs
+      };
+    } catch (e) {
+      print('Error initializing data: $e');
+      throw Exception('Failed to initialize data: $e');
+    }
   }
 }

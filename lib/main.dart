@@ -7,6 +7,7 @@ import 'package:soundify/provider/album_provider.dart';
 import 'package:soundify/provider/auth_provider.dart';
 import 'package:soundify/provider/image_provider.dart';
 import 'package:soundify/provider/like_provider.dart';
+import 'package:soundify/provider/playlist_provider.dart';
 import 'package:soundify/provider/song_list_item_provider.dart';
 import 'package:soundify/provider/song_provider.dart';
 import 'package:soundify/provider/widget_size_provider.dart';
@@ -41,10 +42,11 @@ void main() async {
   // Initialize SQLite Database
   final dbHelper = DatabaseHelper.instance;
   try {
-    print("Initializing Database...");
+    // print("Initializing Database...");
     await dbHelper.database; // Ensure database is initialized
-    await dbHelper.getUsers();
-    print("Database initialized successfully");
+    await dbHelper.initializeAllData();
+
+    // print("Database initialized successfully");
   } catch (e) {
     print('Error initializing database: $e');
   }
@@ -73,6 +75,7 @@ void main() async {
         ChangeNotifierProvider(create: (_) => WidgetStateProvider2()),
         ChangeNotifierProvider(create: (_) => SongProvider()),
         ChangeNotifierProvider(create: (_) => AlbumProvider()),
+        ChangeNotifierProvider(create: (_) => PlaylistProvider()),
         ChangeNotifierProvider(create: (_) => ImageProviderData()),
         ChangeNotifierProvider(create: (_) => SongListItemProvider()),
         ChangeNotifierProvider(create: (_) => LikeProvider()),

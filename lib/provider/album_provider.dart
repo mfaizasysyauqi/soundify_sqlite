@@ -89,8 +89,8 @@ class AlbumProvider with ChangeNotifier {
         _creatorId = album.creatorId;
         _timestamp = album.timestamp;
         _albumUserIndex = album.albumUserIndex;
-        _songListIds = album.songListIds;
-        _albumLikeIds = album.albumLikeIds;
+        _songListIds = album.songListIds!;
+        _albumLikeIds = album.albumLikeIds!;
         _totalDuration = album.totalDuration;
 
         notifyListeners();
@@ -112,8 +112,8 @@ class AlbumProvider with ChangeNotifier {
     _albumImageUrl = album.albumImageUrl;
     _timestamp = album.timestamp;
     _albumUserIndex = album.albumUserIndex;
-    _songListIds = album.songListIds;
-    _albumLikeIds = album.albumLikeIds;
+    _songListIds = album.songListIds!;
+    _albumLikeIds = album.albumLikeIds!;
     _totalDuration = album.totalDuration;
     _isFetched = true;
   }

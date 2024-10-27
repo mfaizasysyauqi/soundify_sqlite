@@ -34,7 +34,7 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   try {
-    print('Attempting to log in with email: ${emailController.text.trim()}');
+    // print('Attempting to log in with email: ${emailController.text.trim()}');
 
     // Retrieve user by email and password
     User? user = await dbHelper.getUserByEmailAndPassword(
@@ -43,7 +43,7 @@ class _LoginPageState extends State<LoginPage> {
     );
 
     if (user != null) {
-      print('Login successful for user: ${user.username}');
+      // print('Login successful for user: ${user.username}');
 
       // Verifikasi user di database
       User? verifiedUser = await dbHelper.getUserById(user.userId);

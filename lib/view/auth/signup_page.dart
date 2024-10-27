@@ -54,7 +54,7 @@ class _SignUpPageState extends State<SignUpPage> {
     }
 
     try {
-      final uuid = const Uuid();
+      const uuid = Uuid();
       final userId = uuid.v4();
 
       final newUser = User(
@@ -85,8 +85,8 @@ class _SignUpPageState extends State<SignUpPage> {
       // Update JSON with latest user
       await FileStorageHelper.instance.updateJsonWithLatestUser();
 
-      print('User signed up successfully: ${newUser.username}');
-      print('User details: ${newUser.toMap()}');
+      // print('User signed up successfully: ${newUser.username}');
+      // print('User details: ${newUser.toMap()}');
 
       // Set current user
       // await DatabaseHelper.instance.setCurrentUserId(userId);
@@ -196,7 +196,7 @@ class _SignUpPageState extends State<SignUpPage> {
                     hintText: 'Enter your email',
                     hintStyle: const TextStyle(color: primaryTextColor),
                     border: const OutlineInputBorder(
-                      borderSide: const BorderSide(
+                      borderSide: BorderSide(
                         color: primaryTextColor,
                       ),
                     ),

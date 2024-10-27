@@ -9,8 +9,8 @@ class Album {
   late final String albumImageUrl;
   final DateTime timestamp; // Use DateTime for timestamp
   final int albumUserIndex;
-  late final List<String> songListIds;
-  final List<String> albumLikeIds;
+  late List<String>? songListIds;
+  late List<String>? albumLikeIds;
   late final Duration totalDuration;
 
   String? creatorName;
@@ -23,8 +23,8 @@ class Album {
     this.albumImageUrl = '', // Default empty string for nullable image URL
     required this.timestamp,
     required this.albumUserIndex,
-    required this.songListIds,
-    required this.albumLikeIds,
+    this.songListIds,
+    this.albumLikeIds,
     required this.totalDuration,
   });
 
@@ -39,8 +39,8 @@ class Album {
       'timestamp': timestamp.toIso8601String(), // Store DateTime as ISO string
       'albumUserIndex': albumUserIndex,
       'songListIds':
-          songListIds.join(','), // Convert List to comma-separated String
-      'albumLikeIds': albumLikeIds.join(','),
+          songListIds?.join(','), // Convert List to comma-separated String
+      'albumLikeIds': albumLikeIds?.join(','),
       'totalDuration': totalDuration.inSeconds, // Store Duration as seconds
     };
   }

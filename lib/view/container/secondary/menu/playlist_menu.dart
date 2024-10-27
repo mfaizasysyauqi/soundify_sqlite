@@ -3,9 +3,9 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:soundify/database/database_helper.dart';
-import 'package:soundify/models/album.dart';
+import 'package:soundify/models/playlist.dart';
 import 'package:soundify/models/song.dart';
-import 'package:soundify/provider/album_provider.dart';
+import 'package:soundify/provider/playlist_provider.dart';
 import 'package:soundify/provider/widget_state_provider_1.dart';
 import 'package:soundify/provider/widget_state_provider_2.dart';
 import 'package:soundify/view/container/primary/home_container.dart';
@@ -13,30 +13,30 @@ import 'package:soundify/view/container/secondary/show_detail_song.dart';
 import 'package:soundify/view/style/style.dart';
 import 'package:file_picker/file_picker.dart';
 
-class AlbumMenu extends StatefulWidget {
-  final String albumName;
-  final String albumImageUrl;
+class PlaylistMenu extends StatefulWidget {
+  final String playlistName;
+  final String playlistImageUrl;
   final String creatorName;
-  const AlbumMenu({
+  const PlaylistMenu({
     super.key,
-    required this.albumName,
-    required this.albumImageUrl,
+    required this.playlistName,
+    required this.playlistImageUrl,
     required this.creatorName,
   });
 
   @override
-  State<AlbumMenu> createState() => _AlbumMenuState();
+  State<PlaylistMenu> createState() => _PlaylistMenuState();
 }
 
 final DatabaseHelper _databaseHelper = DatabaseHelper.instance;
 
 OverlayEntry? _overlayEntry;
 
-class _AlbumMenuState extends State<AlbumMenu> {
+class _PlaylistMenuState extends State<PlaylistMenu> {
   @override
   Widget build(BuildContext context) {
-    // Access the AlbumProvider
-    final albumProvider = Provider.of<AlbumProvider>(context, listen: false);
+    // Access the PlaylistProvider
+    final playlistProvider = Provider.of<PlaylistProvider>(context, listen: false);
     return Column(
       children: <Widget>[
         Padding(
@@ -46,11 +46,11 @@ class _AlbumMenuState extends State<AlbumMenu> {
               // Only show index if it exists
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 10.0),
-                child: Text(
+                child: const Text(
                   '𝅗𝅥',
                   textAlign: TextAlign.right,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: primaryTextColor,
                     fontWeight: mediumWeight,
                     fontSize: smallFontSize,
@@ -67,13 +67,13 @@ class _AlbumMenuState extends State<AlbumMenu> {
                 child: SizedBox(
                   height: 50,
                   width: 50,
-                  child: widget.albumImageUrl.isEmpty
+                  child: widget.playlistImageUrl.isEmpty
                       ? Container(
                           color: primaryTextColor,
                           child:
-                              Icon(Icons.album, color: primaryColor, size: 25))
+                              Icon(Icons.library_music, color: primaryColor, size: 25))
                       : Image.file(
-                          File(widget.albumImageUrl),
+                          File(widget.playlistImageUrl),
                           fit: BoxFit.cover,
                           errorBuilder: (context, error, stackTrace) =>
                               Container(
@@ -91,7 +91,7 @@ class _AlbumMenuState extends State<AlbumMenu> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      widget.albumName,
+                      widget.playlistName,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         color: primaryTextColor,
@@ -109,7 +109,7 @@ class _AlbumMenuState extends State<AlbumMenu> {
                               fontSize: microFontSize,
                             ),
                           )
-                        : SizedBox.shrink(),
+                        : const SizedBox.shrink(),
                   ],
                 ),
               ),
@@ -139,7 +139,7 @@ class _AlbumMenuState extends State<AlbumMenu> {
           child: InkWell(
             hoverColor: primaryTextColor.withOpacity(0.1),
             onTap: () {
-              _showEditAlbumModal(context); // Menampilkan AlertDialog
+              _showEditPlaylistModal(context); // Menampilkan AlertDialog
             },
             child: const Padding(
               padding: EdgeInsets.all(8.0),
@@ -151,7 +151,7 @@ class _AlbumMenuState extends State<AlbumMenu> {
                   ),
                   SizedBox(width: 12),
                   Text(
-                    "Edit Album",
+                    "Edit Playlist",
                     style: TextStyle(
                       color: primaryTextColor,
                       fontWeight: FontWeight.bold,
@@ -167,9 +167,9 @@ class _AlbumMenuState extends State<AlbumMenu> {
           child: InkWell(
             hoverColor: primaryTextColor.withOpacity(0.1),
             onTap: () {
-              _deleteAlbum(
-                albumProvider.albumId,
-                albumProvider.albumImageUrl,
+              _deletePlaylist(
+                playlistProvider.playlistId,
+                playlistProvider.playlistImageUrl,
               );
               Provider.of<WidgetStateProvider1>(context, listen: false)
                   .changeWidget(const HomeContainer(), 'Home Container');
@@ -187,7 +187,7 @@ class _AlbumMenuState extends State<AlbumMenu> {
                   ),
                   SizedBox(width: 12),
                   Text(
-                    "Delete Album and Songs",
+                    "Delete Playlist and Songs",
                     style: TextStyle(
                       color: primaryTextColor,
                       fontWeight: FontWeight.bold,
@@ -202,15 +202,15 @@ class _AlbumMenuState extends State<AlbumMenu> {
     );
   }
 
-  void _showEditAlbumModal(BuildContext context) {
-    // Access the AlbumProvider
-    final albumProvider = Provider.of<AlbumProvider>(context, listen: false);
+  void _showEditPlaylistModal(BuildContext context) {
+    // Access the PlaylistProvider
+    final playlistProvider = Provider.of<PlaylistProvider>(context, listen: false);
 
     // Controllers for TextFormField
-    TextEditingController _albumNameController =
-        TextEditingController(text: albumProvider.albumName);
-    TextEditingController _albumDescriptionController =
-        TextEditingController(text: albumProvider.albumDescription);
+    TextEditingController _playlistNameController =
+        TextEditingController(text: playlistProvider.playlistName);
+    TextEditingController _playlistDescriptionController =
+        TextEditingController(text: playlistProvider.playlistDescription);
 
     // Variable to store the selected image file path
     String? _selectedImagePath;
@@ -257,7 +257,7 @@ class _AlbumMenuState extends State<AlbumMenu> {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             const Text(
-                              'Edit Album',
+                              'Edit Playlist',
                               style: TextStyle(
                                 color: primaryTextColor,
                                 fontSize: 24,
@@ -304,7 +304,7 @@ class _AlbumMenuState extends State<AlbumMenu> {
                                   height: 140,
                                   decoration: BoxDecoration(
                                     color: _selectedImagePath == null &&
-                                            albumProvider.albumImageUrl.isEmpty
+                                            playlistProvider.playlistImageUrl.isEmpty
                                         ? primaryTextColor
                                         : tertiaryColor,
                                     image: _selectedImagePath != null
@@ -314,20 +314,20 @@ class _AlbumMenuState extends State<AlbumMenu> {
                                             ),
                                             fit: BoxFit.cover,
                                           )
-                                        : albumProvider.albumImageUrl.isNotEmpty
+                                        : playlistProvider.playlistImageUrl.isNotEmpty
                                             ? DecorationImage(
                                                 image: FileImage(
-                                                  File(albumProvider
-                                                      .albumImageUrl),
+                                                  File(playlistProvider
+                                                      .playlistImageUrl),
                                                 ),
                                                 fit: BoxFit.cover,
                                               )
                                             : null,
                                   ),
                                   child: _selectedImagePath == null &&
-                                          albumProvider.albumImageUrl.isEmpty
+                                          playlistProvider.playlistImageUrl.isEmpty
                                       ? Icon(
-                                          Icons.album,
+                                          Icons.library_music,
                                           color: primaryColor,
                                           size: 80,
                                         )
@@ -340,15 +340,15 @@ class _AlbumMenuState extends State<AlbumMenu> {
                               child: Column(
                                 children: [
                                   TextFormField(
-                                    controller: _albumNameController,
+                                    controller: _playlistNameController,
                                     style: const TextStyle(
                                         color: primaryTextColor),
                                     decoration: const InputDecoration(
                                       contentPadding: EdgeInsets.all(8),
-                                      labelText: 'Album name',
+                                      labelText: 'Playlist name',
                                       labelStyle:
                                           TextStyle(color: primaryTextColor),
-                                      hintText: 'Enter album name',
+                                      hintText: 'Enter playlist name',
                                       hintStyle:
                                           TextStyle(color: primaryTextColor),
                                       border: OutlineInputBorder(
@@ -363,7 +363,7 @@ class _AlbumMenuState extends State<AlbumMenu> {
                                   ),
                                   const SizedBox(height: 10),
                                   TextFormField(
-                                    controller: _albumDescriptionController,
+                                    controller: _playlistDescriptionController,
                                     style: const TextStyle(
                                         color: primaryTextColor),
                                     decoration: const InputDecoration(
@@ -371,7 +371,7 @@ class _AlbumMenuState extends State<AlbumMenu> {
                                       labelText: 'Description',
                                       labelStyle:
                                           TextStyle(color: primaryTextColor),
-                                      hintText: 'Enter album description',
+                                      hintText: 'Enter playlist description',
                                       hintStyle:
                                           TextStyle(color: primaryTextColor),
                                       border: OutlineInputBorder(
@@ -392,38 +392,38 @@ class _AlbumMenuState extends State<AlbumMenu> {
                                         onTap: () async {
                                           // Get the updated values
                                           final newName =
-                                              _albumNameController.text;
+                                              _playlistNameController.text;
                                           final newDescription =
-                                              _albumDescriptionController.text;
+                                              _playlistDescriptionController.text;
                                           final newImagePath =
                                               _selectedImagePath ??
-                                                  albumProvider.albumImageUrl;
+                                                  playlistProvider.playlistImageUrl;
 
-                                          // Create updated album object
-                                          final updatedAlbum = Album(
-                                            albumId: albumProvider.albumId,
-                                            creatorId: albumProvider.creatorId,
-                                            albumName: newName,
-                                            albumDescription: newDescription,
-                                            albumImageUrl: newImagePath,
-                                            timestamp: albumProvider.timestamp,
-                                            albumUserIndex:
-                                                albumProvider.albumUserIndex,
+                                          // Create updated playlist object
+                                          final updatedPlaylist = Playlist(
+                                            playlistId: playlistProvider.playlistId,
+                                            creatorId: playlistProvider.creatorId,
+                                            playlistName: newName,
+                                            playlistDescription: newDescription,
+                                            playlistImageUrl: newImagePath,
+                                            timestamp: playlistProvider.timestamp,
+                                            playlistUserIndex:
+                                                playlistProvider.playlistUserIndex,
                                             songListIds:
-                                                albumProvider.songListIds,
-                                            albumLikeIds:
-                                                albumProvider.albumLikeIds,
+                                                playlistProvider.songListIds,
+                                            playlistLikeIds:
+                                                playlistProvider.playlistLikeIds,
                                             totalDuration:
-                                                albumProvider.totalDuration ??
+                                                playlistProvider.totalDuration ??
                                                     Duration.zero,
                                           );
 
-                                          // Update album in database
+                                          // Update playlist in database
                                           await DatabaseHelper.instance
-                                              .updateAlbum(updatedAlbum);
+                                              .updatePlaylist(updatedPlaylist);
 
                                           // Update provider
-                                          albumProvider.editAlbum(
+                                          playlistProvider.editPlaylist(
                                             newName,
                                             newDescription,
                                             newImagePath,
@@ -478,18 +478,18 @@ class _AlbumMenuState extends State<AlbumMenu> {
     }
   }
 
-  Future<void> _deleteAlbum(String albumId, String albumImageUrl) async {
+  Future<void> _deletePlaylist(String playlistId, String playlistImageUrl) async {
     try {
-      // Get songs in album
-      List<Song> albumSongs = await _databaseHelper.getSongsByAlbum(albumId);
+      // Get songs in playlist
+      List<Song> playlistSongs = await _databaseHelper.getSongsByPlaylist(playlistId);
 
-      // Delete each song in the album
-      for (var song in albumSongs) {
+      // Delete each song in the playlist
+      for (var song in playlistSongs) {
         await _databaseHelper.deleteSong(song.songId);
       }
 
-      // Delete the album
-      await _databaseHelper.deleteAlbum(albumId);
+      // Delete the playlist
+      await _databaseHelper.deletePlaylist(playlistId);
 
       // Update UI
       if (mounted) {
@@ -499,7 +499,7 @@ class _AlbumMenuState extends State<AlbumMenu> {
             .changeWidget(const ShowDetailSong(), 'ShowDetailSong');
       }
     } catch (e) {
-      print("Error deleting album: $e");
+      print("Error deleting playlist: $e");
     }
   }
 }

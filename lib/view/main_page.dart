@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:soundify/database/database_helper.dart';
+import 'package:soundify/models/playlist.dart';
+import 'package:soundify/provider/playlist_provider.dart';
 import 'package:soundify/provider/widget_size_provider.dart';
 import 'package:soundify/provider/widget_state_provider_1.dart';
 import 'package:soundify/provider/widget_state_provider_2.dart';
@@ -8,11 +10,14 @@ import 'package:soundify/view/container/bottom_container.dart';
 import 'package:soundify/view/container/primary/add_song_container.dart';
 import 'package:soundify/view/container/primary/home_container.dart';
 import 'package:soundify/view/container/primary/liked_song_container.dart';
+import 'package:soundify/view/container/primary/playlist_container.dart';
 import 'package:soundify/view/container/secondary/show_detail_song.dart';
 import 'package:soundify/view/splash_screen.dart';
 import 'package:soundify/view/style/style.dart';
 import 'package:provider/provider.dart';
+import 'package:soundify/view/widget/play_list.dart';
 import 'package:soundify/view/widget/song_list.dart';
+import 'package:uuid/uuid.dart';
 
 class MainPage extends StatefulWidget {
   final activeWidget1;
@@ -26,116 +31,164 @@ class MainPage extends StatefulWidget {
 
 bool showModal = false;
 
-// final currentUser = FirebaseAuth.instance.currentUser;
-
 late Widget activeWidget1;
 late Widget activeWidget2;
 
 bool isSearch = true;
 FocusNode searchFocusNode = FocusNode();
 
+final DatabaseHelper _databaseHelper = DatabaseHelper.instance;
+
 class _MainPageState extends State<MainPage> {
   bool _isHoveredSearch = false;
 
-  // String? _profileImageUrl; // Variabel untuk menyimpan URL gambar profil
-  // String? _userId; // Variabel untuk menyimpan userId dari currentUser
-  // // Pindahkan activeWidget1 dan activeWidget2 ke dalam State
+  @override
+  void initState() {
+    super.initState();
+    // _getUserId(); // Dapatkan userId saat widget diinisialisasi
+    fetchPlaylists();
+  }
 
-  // @override
-  // void initState() {
-  //   super.initState();
-  //   _getUserId(); // Dapatkan userId saat widget diinisialisasi
-  //   fetchPlaylists();
-  // }
+  Future<void> fetchPlaylists() async {
+    try {
+      final db = await DatabaseHelper.instance.database;
 
-  // Future<void> fetchPlaylists() async {
-  //   final creatorPlaylistsQuery = FirebaseFirestore.instance
-  //       .collection('playlists')
-  //       .where(
-  //         'creatorId',
-  //         isEqualTo: currentUser?.uid,
-  //       )
-  //       .get();
+      // Get current user from SQLite
+      final user = await DatabaseHelper.instance.getCurrentUser();
+      print("User ID: ${user?.userId}"); // Print User ID to ensure its value
 
-  //   final likedPlaylistsQuery = FirebaseFirestore.instance
-  //       .collection('playlists')
-  //       .where(
-  //         'playlistLikeIds',
-  //         arrayContains: currentUser?.uid,
-  //       )
-  //       .get();
+      if (user == null) {
+        print("User tidak ditemukan. Gagal menambahkan playlist.");
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Gagal menambahkan playlist: User tidak ditemukan'),
+          ),
+        );
+        return;
+      }
 
-  //   // Jalankan kedua query secara bersamaan
-  //   final results =
-  //       await Future.wait([creatorPlaylistsQuery, likedPlaylistsQuery]);
+      // Query playlists by creatorId
+      final creatorPlaylists = await db.query(
+        'playlists',
+        where: 'creatorId = ?',
+        whereArgs: [user.userId],
+      );
+      print("Creator Playlists: ${creatorPlaylists.length}");
 
-  //   if (mounted) {
-  //     final creatorPlaylists = results[0].docs;
-  //     final likedPlaylists = results[1].docs;
+      // Query liked playlists
+      final likedPlaylists = await db.query(
+        'playlists',
+        where: 'playlistLikeIds LIKE ?',
+        whereArgs: ['%${user.userId}%'],
+      );
+      print("Liked Playlists: ${likedPlaylists.length}");
 
-  //     // Set untuk menyimpan playlistId yang sudah dimasukkan agar tidak duplikat
-  //     final Set<String> playlistIds = {};
+      if (mounted) {
+        final Set<String> playlistIds = {};
+        final List<Map<String, dynamic>> combinedPlaylists = [];
 
-  //     final List<Map<String, dynamic>> combinedPlaylists = [];
+        // Cache to store fetched usernames to avoid duplicate queries
+        Map<String, String?> userNameCache = {};
 
-  //     // Tambahkan playlists dari creatorPlaylistsQuery
-  //     for (var doc in creatorPlaylists) {
-  //       final playlistId = doc['playlistId'] ?? '';
-  //       if (!playlistIds.contains(playlistId)) {
-  //         playlistIds.add(playlistId);
-  //         combinedPlaylists.add({
-  //           'creatorId': doc['creatorId'] ?? '',
-  //           'playlistId': playlistId,
-  //           'playlistName': doc['playlistName'] ?? '',
-  //           'playlistDescription': doc['playlistDescription'] ?? '',
-  //           'playlistImageUrl': doc['playlistImageUrl'] ?? '',
-  //           'timestamp':
-  //               (doc['timestamp'] as Timestamp?)?.toDate() ?? DateTime.now(),
-  //           'playlistUserIndex': doc['playlistUserIndex'] ?? 0,
-  //           'songListIds': doc['songListIds'] ?? [],
-  //           'totalDuration': doc['totalDuration'] ?? 0,
-  //         });
-  //       }
-  //     }
+        // Function to fetch username and cache it
+        Future<String> fetchUserName(String creatorId) async {
+          if (userNameCache.containsKey(creatorId)) {
+            return userNameCache[creatorId] ?? 'Creator name not found';
+          }
 
-  //     // Tambahkan playlists dari likedPlaylistsQuery, cek duplikat playlistId
-  //     for (var doc in likedPlaylists) {
-  //       final playlistId = doc['playlistId'] ?? '';
-  //       if (!playlistIds.contains(playlistId)) {
-  //         playlistIds.add(playlistId);
-  //         combinedPlaylists.add({
-  //           'creatorId': doc['creatorId'] ?? '',
-  //           'playlistId': playlistId,
-  //           'playlistName': doc['playlistName'] ?? '',
-  //           'playlistDescription': doc['playlistDescription'] ?? '',
-  //           'playlistImageUrl': doc['playlistImageUrl'] ?? '',
-  //           'timestamp':
-  //               (doc['timestamp'] as Timestamp?)?.toDate() ?? DateTime.now(),
-  //           'playlistUserIndex': doc['playlistUserIndex'] ?? 0,
-  //           'songListIds': doc['songListIds'] ?? [],
-  //           'totalDuration': doc['totalDuration'] ?? 0,
-  //         });
-  //       }
-  //     }
+          // Fetch username from SQLite
+          final creator = await DatabaseHelper.instance.getUserById(creatorId);
+          final creatorName = creator?.fullName ?? 'Creator name not found';
+          userNameCache[creatorId] = creatorName;
+          return creatorName;
+        }
 
-  //     // Sort by playlistUserIndex
-  //     combinedPlaylists.sort(
-  //         (a, b) => b['playlistUserIndex'].compareTo(a['playlistUserIndex']));
+        // Process and combine creator playlists
+        for (var playlist in creatorPlaylists) {
+          final playlistId = (playlist['playlistId'] ?? '').toString();
+          if (!playlistIds.contains(playlistId)) {
+            playlistIds.add(playlistId);
 
-  //     // Update StreamController dengan playlist yang sudah digabung dan bebas duplikat
-  //     _playlistsController.add(combinedPlaylists);
-  //   }
-  // }
+            final creatorId = (playlist['creatorId'] ?? '').toString();
+            final creatorName = await fetchUserName(creatorId);
 
-  // @override
-  // void didChangeDependencies() {
-  //   super.didChangeDependencies();
-  //   final currentWidgetName =
-  //       Provider.of<WidgetStateProvider1>(context, listen: true).widgetName;
-  //   setState(() {
-  //     isSearch = currentWidgetName == "HomeContainer";
-  //   });
-  // }
+            combinedPlaylists.add({
+              'creatorId': creatorId,
+              'creatorName': creatorName,
+              'playlistId': playlistId,
+              'playlistName': (playlist['playlistName'] ?? '').toString(),
+              'playlistDescription':
+                  (playlist['playlistDescription'] ?? '').toString(),
+              'playlistImageUrl':
+                  (playlist['playlistImageUrl'] ?? '').toString(),
+              'timestamp':
+                  DateTime.parse((playlist['timestamp'] ?? '').toString()),
+              'playlistUserIndex': playlist['playlistUserIndex'] ?? 0,
+              'songListIds': playlist['songListIds'] != null
+                  ? (playlist['songListIds'] as String).split(',')
+                  : [],
+              'totalDuration': playlist['totalDuration'] is int
+                  ? Duration(seconds: playlist['totalDuration'] as int)
+                  : (playlist['totalDuration'] as Duration?) ?? Duration.zero,
+            });
+          }
+        }
+
+        // Process and combine liked playlists, avoiding duplicates
+        for (var playlist in likedPlaylists) {
+          final playlistId = (playlist['playlistId'] ?? '').toString();
+          if (!playlistIds.contains(playlistId)) {
+            playlistIds.add(playlistId);
+
+            final creatorId = (playlist['creatorId'] ?? '').toString();
+            final creatorName = await fetchUserName(creatorId);
+
+            combinedPlaylists.add({
+              'creatorId': creatorId,
+              'creatorName': creatorName,
+              'playlistId': playlistId,
+              'playlistName': (playlist['playlistName'] ?? '').toString(),
+              'playlistDescription':
+                  (playlist['playlistDescription'] ?? '').toString(),
+              'playlistImageUrl':
+                  (playlist['playlistImageUrl'] ?? '').toString(),
+              'timestamp':
+                  DateTime.parse((playlist['timestamp'] ?? '').toString()),
+              'playlistUserIndex': playlist['playlistUserIndex'] ?? 0,
+              'songListIds': playlist['songListIds'] != null
+                  ? (playlist['songListIds'] as String).split(',')
+                  : [],
+              'totalDuration': playlist['totalDuration'] is int
+                  ? Duration(seconds: playlist['totalDuration'] as int)
+                  : (playlist['totalDuration'] as Duration?) ?? Duration.zero,
+            });
+          }
+        }
+
+        print(
+            "Combined Playlists (after deduplication): ${combinedPlaylists.length}");
+
+        // Sort playlists by playlistUserIndex in descending order
+        combinedPlaylists.sort(
+            (a, b) => b['playlistUserIndex'].compareTo(a['playlistUserIndex']));
+
+        // Update StreamController with the combined and deduplicated playlists
+        _playlistsController.add(combinedPlaylists);
+      }
+    } catch (error) {
+      print("Error fetching playlists from SQLite: $error");
+    }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final currentWidgetName =
+        Provider.of<WidgetStateProvider1>(context, listen: true).widgetName;
+    setState(() {
+      isSearch = currentWidgetName == "HomeContainer";
+    });
+  }
 
   void navigateToHomeContainer() {
     if (!isSearch) {
@@ -149,39 +202,6 @@ class _MainPageState extends State<MainPage> {
       });
     }
   }
-
-  // // Fungsi untuk mendapatkan userId dari FirebaseAuth
-  // void _getUserId() {
-  //   User? currentUser =
-  //       FirebaseAuth.instance.currentUser; // Ambil pengguna yang sedang login
-  //   if (currentUser != null) {
-  //     setState(() {
-  //       _userId = currentUser.uid; // Dapatkan userId dari currentUser
-  //       _getProfileImageUrl(); // Setelah mendapatkan userId, ambil profileImageUrl
-  //     });
-  //   }
-  // }
-
-  // // Fungsi untuk mendapatkan profileImageUrl dari Firestore
-  // void _getProfileImageUrl() {
-  //   if (_userId != null) {
-  //     FirebaseFirestore.instance
-  //         .collection('users')
-  //         .doc(_userId)
-  //         .snapshots()
-  //         .listen((snapshot) {
-  //       if (snapshot.exists && snapshot.data() != null) {
-  //         setState(() {
-  //           _profileImageUrl = snapshot.get('profileImageUrl');
-  //         });
-  //       } else {
-  //         setState(() {
-  //           _profileImageUrl = null;
-  //         });
-  //       }
-  //     });
-  //   }
-  // }
 
   Future<void> _logout() async {
     // Assuming you have a method in your DatabaseHelper to clear the current session
@@ -238,67 +258,58 @@ class _MainPageState extends State<MainPage> {
                     IntrinsicWidth(
                       child: TextButton(
                         onPressed: () async {
-                          // // Panggil fungsi untuk menyimpan data playlist
-                          // await _submitPlaylistData(context);
-                          // // Fetch the latest playlist
-                          // var latestPlaylist;
-                          // try {
-                          //   final playlistSnapshot = await FirebaseFirestore
-                          //       .instance
-                          //       .collection('playlists')
-                          //       .orderBy('playlistUserIndex', descending: true)
-                          //       .limit(1)
-                          //       .get();
+                          // Panggil fungsi untuk menyimpan data playlist
+                          await _submitPlaylistData(context);
 
-                          //   if (playlistSnapshot.docs.isNotEmpty) {
-                          //     latestPlaylist =
-                          //         playlistSnapshot.docs.first.data();
-                          //   }
-                          // } catch (error) {
-                          //   print("Error fetching playlist: $error");
-                          // }
-                          // if (latestPlaylist != null) {
-                          //   var timestamp;
-                          //   if (latestPlaylist['timestamp'] != null &&
-                          //       latestPlaylist['timestamp'] is Timestamp) {
-                          //     timestamp =
-                          //         (latestPlaylist['timestamp'] as Timestamp)
-                          //             .toDate();
-                          //   } else {
-                          //     timestamp = DateTime
-                          //         .now(); // fallback jika timestamp null atau bukan tipe Timestamp
-                          //   }
+                          // Ambil playlist terbaru dari SQLite
+                          var latestPlaylist;
+                          try {
+                            // Mengambil semua playlist dari SQLite dan mencari yang terbaru
+                            final playlists =
+                                await DatabaseHelper.instance.getPlaylists();
+                            if (playlists.isNotEmpty) {
+                              playlists.sort((a, b) => b.playlistUserIndex
+                                  .compareTo(a
+                                      .playlistUserIndex)); // Urutkan descending
+                              latestPlaylist =
+                                  playlists.first; // Ambil playlist terbaru
+                            }
+                          } catch (error) {
+                            print("Error fetching playlist: $error");
+                          }
 
-                          //   setState(() {
-                          //     Provider.of<PlaylistProvider>(context,
-                          //             listen: false)
-                          //         .updatePlaylist(
-                          //       latestPlaylist['playlistImageUrl'] ?? '',
-                          //       latestPlaylist['playlistName'] ??
-                          //           'Untitled Playlist',
-                          //       latestPlaylist['playlistDescription'] ?? '',
-                          //       latestPlaylist['creatorId'] ?? '',
+                          if (latestPlaylist != null) {
+                            setState(() {
+                              Provider.of<PlaylistProvider>(context,
+                                      listen: false)
+                                  .updatePlaylistProvider(
+                                latestPlaylist.playlistId ?? '',
+                                latestPlaylist.creatorId ?? '',
+                                latestPlaylist.playlistName ??
+                                    'Untitled Playlist',
+                                latestPlaylist.playlistDescription ?? '',
+                                latestPlaylist.playlistImageUrl ?? '',
+                                latestPlaylist
+                                    .timestamp, // gunakan timestamp dari SQLite
+                                latestPlaylist.playlistUserIndex,
+                                latestPlaylist.songListIds,
+                                latestPlaylist.playlistLikeIds,
+                                latestPlaylist.totalDuration ?? Duration.zero,
+                              );
 
-                          //       latestPlaylist['playlistId'] ?? '',
-                          //       timestamp, // gunakan timestamp yang telah diperiksa
-                          //       latestPlaylist['playlistUserIndex'] ?? 0,
-                          //       latestPlaylist['songListIds'] ?? [],
-                          //       latestPlaylist['totalDuration'] ?? 0,
-                          //     );
+                              activeWidget2 = const ShowDetailSong();
+                            });
+                          }
 
-                          //     Provider.of<WidgetStateProvider1>(context,
-                          //             listen: false)
-                          //         .changeWidget(
-                          //       PlaylistContainer(
-                          //           playlistId: latestPlaylist['playlistId']),
-                          //       'PlaylistContainer',
-                          //     );
+                          Provider.of<WidgetStateProvider1>(context,
+                                  listen: false)
+                              .changeWidget(
+                            PlaylistContainer(
+                                playlistId: latestPlaylist['playlistId']),
+                            'PlaylistContainer',
+                          );
 
-                          //     activeWidget2 = const ShowDetailSong();
-                          //   });
-                          // }
-
-                          // // Close modal after action
+                          // Tutup modal setelah tindakan selesai
                           _closeModal();
                         },
                         child: const Row(
@@ -557,129 +568,105 @@ class _MainPageState extends State<MainPage> {
                                                     ),
                                                   ),
                                                 ),
-                                                // Padding(
-                                                //   padding: const EdgeInsets
-                                                //       .symmetric(
-                                                //     horizontal: 8.0,
-                                                //   ),
-                                                //   child: StreamBuilder<
-                                                //       List<
-                                                //           Map<String,
-                                                //               dynamic>>>(
-                                                //     stream: _playlistsController
-                                                //         .stream,
-                                                //     builder:
-                                                //         (context, snapshot) {
-                                                //       if (!snapshot.hasData) {
-                                                //         return const Center(
-                                                //           child:
-                                                //               CircularProgressIndicator(
-                                                //             color:
-                                                //                 primaryTextColor,
-                                                //           ), // Spi,
-                                                //         );
-                                                //       }
+                                                Padding(
+                                                  padding: const EdgeInsets
+                                                      .symmetric(
+                                                    horizontal: 8.0,
+                                                  ),
+                                                  child: StreamBuilder<
+                                                      List<
+                                                          Map<String,
+                                                              dynamic>>>(
+                                                    stream: _playlistsController
+                                                        .stream,
+                                                    builder:
+                                                        (context, snapshot) {
+                                                      if (!snapshot.hasData) {
+                                                        return const Center(
+                                                          child:
+                                                              CircularProgressIndicator(
+                                                            color:
+                                                                primaryTextColor,
+                                                          ), // Spi,
+                                                        );
+                                                      }
 
-                                                //       final playlists =
-                                                //           snapshot.data!;
+                                                      final playlists =
+                                                          snapshot.data!;
 
-                                                //       return ListView.builder(
-                                                //         shrinkWrap:
-                                                //             true, // Prevent ListView from expanding indefinitely
-                                                //         physics:
-                                                //             const NeverScrollableScrollPhysics(), // Disable scrolling for this ListView
-                                                //         itemCount:
-                                                //             playlists.length,
-                                                //         itemBuilder:
-                                                //             (context, index) {
-                                                //           final playlist =
-                                                //               playlists[index];
+                                                      return ListView.builder(
+                                                        shrinkWrap:
+                                                            true, // Prevent ListView from expanding indefinitely
+                                                        physics:
+                                                            const NeverScrollableScrollPhysics(), // Disable scrolling for this ListView
+                                                        itemCount:
+                                                            playlists.length,
+                                                        itemBuilder:
+                                                            (context, index) {
+                                                          final playlist =
+                                                              playlists[index];
 
-                                                //           // Wrap PlayList widget with GestureDetector or InkWell for handling tap
-                                                //           return GestureDetector(
-                                                //             onTap: () {
-                                                //               setState(() {
-                                                //                 Provider.of<PlaylistProvider>(
-                                                //                         context,
-                                                //                         listen:
-                                                //                             false)
-                                                //                     .updatePlaylist(
-                                                //                   playlist[
-                                                //                       'playlistImageUrl'],
-                                                //                   playlist[
-                                                //                       'playlistName'],
-                                                //                   playlist[
-                                                //                       'playlistDescription'],
-                                                //                   playlist[
-                                                //                       'creatorId'],
-                                                //                   playlist[
-                                                //                       'playlistId'],
-                                                //                   playlist[
-                                                //                       'timestamp'],
-                                                //                   playlist[
-                                                //                       'playlistUserIndex'],
-                                                //                   playlist[
-                                                //                       'songListIds'],
-                                                //                   playlist[
-                                                //                       'totalDuration'],
-                                                //                 );
-                                                //                 // Update widget dengan setState
-                                                //                 setState(() {
-                                                //                   Provider.of<WidgetStateProvider1>(
-                                                //                           context,
-                                                //                           listen:
-                                                //                               false)
-                                                //                       .changeWidget(
-                                                //                     PlaylistContainer(
-                                                //                       playlistId:
-                                                //                           playlist[
-                                                //                               'playlistId'],
-                                                //                     ),
-                                                //                     'Playlist Container',
-                                                //                   );
+                                                          // Wrap PlayList widget with GestureDetector or InkWell for handling tap
+                                                          return GestureDetector(
+                                                            onTap: () {
+                                                              setState(() {
+                                                                Provider.of<PlaylistProvider>(
+                                                                        context,
+                                                                        listen:
+                                                                            false)
+                                                                    .updatePlaylistProvider(
+                                                                  playlist[
+                                                                      'playlistId'],
+                                                                  playlist[
+                                                                      'creatorId'],
+                                                                  playlist[
+                                                                      'playlistName'],
+                                                                  playlist[
+                                                                      'playlistDescription'],
+                                                                  playlist[
+                                                                      'playlistImageUrl'],
+                                                                  playlist[
+                                                                      'timestamp'],
+                                                                  playlist[
+                                                                      'playlistUserIndex'],
+                                                                  playlist[
+                                                                      'songListIds'],
+                                                                  playlist[
+                                                                      'playlistLikeIds'],
+                                                                  playlist[
+                                                                      'totalDuration'],
+                                                                );
+                                                              });
 
-                                                //                   activeWidget2 =
-                                                //                       const ShowDetailSong();
-                                                //                 });
-                                                //               });
-                                                //             },
-                                                //             child: PlayList(
-                                                //               creatorId: playlist[
-                                                //                   'creatorId'],
-                                                //               playlistId: playlist[
-                                                //                   'playlistId'],
-                                                //               playlistName:
-                                                //                   playlist[
-                                                //                       'playlistName'],
-                                                //               playlistDescription:
-                                                //                   playlist[
-                                                //                       'playlistDescription'],
-                                                //               playlistImageUrl:
-                                                //                   playlist[
-                                                //                       'playlistImageUrl'],
-                                                //               timestamp: playlist[
-                                                //                   'timestamp'],
-                                                //               playlistUserIndex:
-                                                //                   playlist[
-                                                //                       'playlistUserIndex'],
-                                                //               songListIds: playlist[
-                                                //                   'songListIds'],
-                                                //               totalDuration: playlist[
-                                                //                           'totalDuration']
-                                                //                       is int
-                                                //                   ? playlist[
-                                                //                       'totalDuration']
-                                                //                   : int.tryParse(
-                                                //                           playlist['totalDuration']
-                                                //                               .toString()) ??
-                                                //                       0, // Konversi dari String ke int
-                                                //             ),
-                                                //           );
-                                                //         },
-                                                //       );
-                                                //     },
-                                                //   ),
-                                                // ),
+                                                              Provider.of<WidgetStateProvider1>(
+                                                                      context,
+                                                                      listen:
+                                                                          false)
+                                                                  .changeWidget(
+                                                                PlaylistContainer(
+                                                                  playlistId:
+                                                                      playlist[
+                                                                          'playlistId'],
+                                                                ),
+                                                                'PlaylistContainer',
+                                                              );
+                                                            },
+                                                            child: PlayList(
+                                                              playlistImageUrl:
+                                                                  playlist[
+                                                                      'playlistImageUrl'],
+                                                              playlistName:
+                                                                  playlist[
+                                                                      'playlistName'],
+                                                              creatorName: playlist[
+                                                                  'creatorName'],
+                                                            ),
+                                                          );
+                                                        },
+                                                      );
+                                                    },
+                                                  ),
+                                                ),
                                               ],
                                             ),
                                           ),
@@ -1025,48 +1012,64 @@ class _MainPageState extends State<MainPage> {
     );
   }
 
-  // final StreamController<List<Map<String, dynamic>>> _playlistsController =
-  //     StreamController();
+  final StreamController<List<Map<String, dynamic>>> _playlistsController =
+      StreamController();
 
-  // Future<void> _submitPlaylistData(BuildContext context) async {
-  //   try {
-  //     final currentUser = FirebaseAuth.instance.currentUser;
-  //     if (currentUser == null) return;
+  Future<void> _submitPlaylistData(BuildContext context) async {
+    try {
+      // Dapatkan pengguna saat ini dari SQLite
+      final user = await DatabaseHelper.instance.getCurrentUser();
 
-  //     // Step 1: Get the number of playlists created by the current user
-  //     QuerySnapshot userPlaylists = await FirebaseFirestore.instance
-  //         .collection('playlists')
-  //         .where('creatorId', isEqualTo: currentUser.uid)
-  //         .get();
+      if (user == null) {
+        print("User tidak ditemukan. Gagal menambahkan playlist.");
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Gagal menambahkan playlist: User tidak ditemukan'),
+          ),
+        );
+        return;
+      }
 
-  //     // Calculate playlistUserIndex (number of existing playlists + 1)
-  //     int playlistUserIndex = userPlaylists.docs.length + 1;
+      // Ambil instance database SQLite
+      final db = await DatabaseHelper.instance.database;
 
-  //     // Step 3: Add playlist data to Firestore 'playlists' collection
-  //     DocumentReference playlistRef =
-  //         await FirebaseFirestore.instance.collection('playlists').add({
-  //       'playlistId': '',
-  //       'creatorId': currentUser.uid,
-  //       'playlistName': "Playlist # $playlistUserIndex",
-  //       'playlistDescription': "",
-  //       'playlistImageUrl': "",
-  //       'timestamp': FieldValue.serverTimestamp(),
-  //       'playlistUserIndex': playlistUserIndex,
-  //       'songListIds': [],
-  //       'playlistLikeIds': [],
-  //       'totalDuration': 0,
-  //     });
+      // Ambil jumlah playlist yang ada di SQLite untuk menghitung `playlistUserIndex`
+      final List<Map<String, dynamic>> existingPlaylists = await db.query(
+        'playlists',
+        where: 'creatorId = ?',
+        whereArgs: [user.userId],
+      );
 
-  //     // Step 4: Get playlistId from the newly added document
-  //     String playlistId = playlistRef.id;
+      int playlistUserIndex = existingPlaylists.length + 1;
 
-  //     // Step 5: Update the playlist document with the generated playlistId
-  //     await playlistRef.update({'playlistId': playlistId});
-  //   } catch (e) {
-  //     print('Error submitting playlist data: $e');
-  //     ScaffoldMessenger.of(context).showSnackBar(
-  //       SnackBar(content: Text('Failed to submit playlist data: $e')),
-  //     );
-  //   }
-  // }
+      final playlistId = Uuid().v4();
+
+      // Buat objek Playlist baru
+      final newPlaylist = Playlist(
+        playlistId: playlistId, // Menggunakan UUID sebagai playlistId
+        creatorId: user.userId,
+        playlistName: "Playlist #$playlistUserIndex",
+        playlistDescription: "",
+        playlistImageUrl: "",
+        timestamp: DateTime.now(),
+        playlistUserIndex: playlistUserIndex,
+        songListIds: [],
+        playlistLikeIds: [],
+        totalDuration: Duration.zero,
+      );
+
+      // Simpan playlist di SQLite
+      await DatabaseHelper.instance.insertPlaylist(newPlaylist);
+
+      // Tampilkan snackbar sukses
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Playlist berhasil ditambahkan!')),
+      );
+    } catch (e) {
+      print('Error submitting playlist data: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Gagal menambahkan playlist: $e')),
+      );
+    }
+  }
 }

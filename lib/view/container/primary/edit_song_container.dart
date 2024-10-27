@@ -1002,8 +1002,8 @@ class _EditSongContainerState extends State<EditSongContainer> {
       if (currentAlbumId.isNotEmpty) {
         Album? oldAlbum = await dbHelper.getAlbumById(currentAlbumId);
         if (oldAlbum != null) {
-          List<String> oldSongListIds = oldAlbum.songListIds;
-          oldSongListIds.remove(widget.songId);
+          List<String>? oldSongListIds = oldAlbum.songListIds;
+          oldSongListIds?.remove(widget.songId);
           oldAlbum.songListIds = oldSongListIds;
           await dbHelper.updateAlbum(oldAlbum);
         }
@@ -1012,8 +1012,8 @@ class _EditSongContainerState extends State<EditSongContainer> {
       // Add to new album
       Album? newAlbum = await dbHelper.getAlbumById(newAlbumId);
       if (newAlbum != null) {
-        List<String> newSongListIds = newAlbum.songListIds;
-        if (!newSongListIds.contains(widget.songId)) {
+        List<String>? newSongListIds = newAlbum.songListIds;
+        if (!newSongListIds!.contains(widget.songId)) {
           newSongListIds.add(widget.songId);
           newAlbum.songListIds = newSongListIds;
           await dbHelper.updateAlbum(newAlbum);

@@ -3,7 +3,7 @@ import 'package:soundify/view/container/secondary/show_detail_song.dart';
 
 // Model untuk Provider
 class WidgetStateProvider2 with ChangeNotifier {
-  Widget activeWidget2 = ShowDetailSong(); // Default widget
+  Widget activeWidget2 = const ShowDetailSong(); // Default widget
   String widgetName = 'ShowDetailSong'; // Nama widget untuk melacak
 
   // Getter untuk mendapatkan widget saat ini

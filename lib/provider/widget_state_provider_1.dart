@@ -3,7 +3,7 @@ import 'package:soundify/view/container/primary/home_container.dart';
 
 // Model untuk Provider
 class WidgetStateProvider1 with ChangeNotifier {
-  Widget _activeWidget1 = HomeContainer(); // Default widget
+  Widget _activeWidget1 = const HomeContainer(); // Default widget
   String _widgetName = 'HomeContainer'; // Nama widget untuk melacak
 
   // Getter untuk mendapatkan widget saat ini

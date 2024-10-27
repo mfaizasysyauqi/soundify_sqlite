@@ -280,7 +280,7 @@ class _AddSongContainerState extends State<AddSongContainer> {
       Album? album = await DatabaseHelper.instance
           .getAlbumByCreatorId(_albumIdController.text);
       if (album != null) {
-        album.songListIds.add(newSong.songId);
+        album.songListIds?.add(newSong.songId);
         album.totalDuration =
             Duration(seconds: album.totalDuration.inSeconds + songDurationS!);
         await DatabaseHelper.instance.updateAlbum(album);
