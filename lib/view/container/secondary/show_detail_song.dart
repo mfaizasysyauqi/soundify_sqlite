@@ -1,5 +1,4 @@
 import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:soundify/provider/song_provider.dart';
@@ -16,46 +15,47 @@ class _ShowDetailSongState extends State<ShowDetailSong> {
   @override
   Widget build(BuildContext context) {
     final songProvider = Provider.of<SongProvider>(context);
-    // Get the screen width using MediaQuery
     final screenWidth = MediaQuery.of(context).size.width;
 
     return ClipRRect(
-      borderRadius:
-          BorderRadius.circular(20), // Membuat sudut melengkung pada Scaffold
+      borderRadius: BorderRadius.circular(20),
       child: Scaffold(
         backgroundColor: primaryColor,
         body: Padding(
-          padding: const EdgeInsets.all(
-              8.0), // Menambahkan padding di seluruh Scaffold
+          padding: const EdgeInsets.all(8.0),
           child: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                songProvider.songImageUrl.isNotEmpty
-                    ? Padding(
-                        padding: const EdgeInsets.all(8.0),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(4),
-                          child: AspectRatio(
-                            aspectRatio: 1,
-                            child: Image.file(
-                              File(songProvider
-                                  .songImageUrl), // Ensure this is a valid file path
-                              fit: BoxFit.cover,
-                            ),
-                          ),
+                if (songProvider.songImageUrl.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(4),
+                      child: AspectRatio(
+                        aspectRatio: 1,
+                        child: Image.file(
+                          File(songProvider.songImageUrl),
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Container(
+                              color: Colors.grey,
+                              child: const Icon(Icons.broken_image,
+                                  color: Colors.white),
+                            );
+                          },
                         ),
-                      )
-                    : const SizedBox.shrink(),
+                      ),
+                    ),
+                  ),
                 Padding(
                   padding: const EdgeInsets.all(8.0),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       SizedBox(
-                        width: screenWidth *
-                            0.8, // Set text width as 80% of screen width
+                        width: screenWidth * 0.8,
                         child: Text(
                           songProvider.songTitle,
                           overflow: TextOverflow.ellipsis,
@@ -67,8 +67,7 @@ class _ShowDetailSongState extends State<ShowDetailSong> {
                         ),
                       ),
                       SizedBox(
-                        width: screenWidth *
-                            0.8, // Set text width as 80% of screen width
+                        width: screenWidth * 0.8,
                         child: Text(
                           songProvider.artistName ?? '',
                           overflow: TextOverflow.ellipsis,
@@ -81,186 +80,162 @@ class _ShowDetailSongState extends State<ShowDetailSong> {
                     ],
                   ),
                 ),
-                songProvider.songImageUrl.isNotEmpty
-                    ? Padding(
-                        padding: const EdgeInsets.all(8.0),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(4),
-                          child: Container(
-                            width: screenWidth * 1, // Same width as the image
-                            color: tertiaryColor,
-
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                songProvider.bioImageUrl!.isNotEmpty
-                                    ? Stack(
-                                        children: [
-                                          ClipRect(
-                                            child: Align(
-                                              alignment: Alignment
-                                                  .topCenter, // Align to the top
-                                              heightFactor: songProvider
-                                                      .userBio.isNotEmpty
-                                                  ? 0.75
-                                                  : 0.9, // Show only 75% of the image
-                                              child: AspectRatio(
-                                                aspectRatio: 1,
-                                                child: Image.file(
-                                                  File(
-                                                    songProvider.bioImageUrl ??
-                                                        '',
-                                                  ),
-                                                  fit: BoxFit.cover,
-                                                  errorBuilder: (context, error,
-                                                      stackTrace) {
-                                                    return Container(
-                                                      color: primaryTextColor,
-                                                      width: screenWidth * 0.22,
-                                                      height:
-                                                          screenWidth * 0.22,
-                                                      child: Icon(
-                                                        Icons.portrait,
-                                                        color: primaryColor,
-                                                        size:
-                                                            screenWidth * 0.11,
-                                                      ),
-                                                    );
-                                                  },
-                                                ),
-                                              ),
-                                            ),
-                                          ),
-                                          Positioned(
-                                            top: 10,
-                                            left: 10,
-                                            child: Text(
-                                              'About the artist',
-                                              style: TextStyle(
-                                                color: primaryTextColor,
-                                                fontWeight: FontWeight.bold,
-                                                shadows: [
-                                                  Shadow(
-                                                    offset: const Offset(-1.0,
-                                                        1.0), // Posisi bayangan (x, y)
-                                                    blurRadius:
-                                                        2.0, // Tingkat blur
-                                                    color: Colors.black
-                                                        .withOpacity(
-                                                            0.5), // Warna bayangan
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      )
-                                    : Padding(
-                                        padding: const EdgeInsets.symmetric(
-                                            horizontal: 16.0),
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            const SizedBox(
-                                              height: 16,
-                                            ),
-                                            Text(
-                                              'About the artist',
-                                              style: TextStyle(
-                                                color: primaryTextColor,
-                                                fontWeight: FontWeight.bold,
-                                                shadows: [
-                                                  Shadow(
-                                                    offset: const Offset(-1.0,
-                                                        1.0), // Posisi bayangan (x, y)
-                                                    blurRadius:
-                                                        2.0, // Tingkat blur
-                                                    color: Colors.black
-                                                        .withOpacity(
-                                                            0.5), // Warna bayangan
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                            const SizedBox(
-                                              height: 16,
-                                            ),
-                                            CircleAvatar(
-                                              radius: 40,
-                                              backgroundColor: (songProvider
-                                                      .profileImageUrl!.isEmpty)
-                                                  ? primaryTextColor
-                                                  : tertiaryColor,
-                                              backgroundImage: songProvider
-                                                      .profileImageUrl!
-                                                      .isNotEmpty
-                                                  ? NetworkImage(songProvider
-                                                          .profileImageUrl ??
-                                                      '')
-                                                  : null, // Assign NetworkImage if _profileImageUrl is valid
-                                              child: (songProvider
-                                                      .profileImageUrl!.isEmpty)
-                                                  ? Icon(
-                                                      Icons.person,
-                                                      color: primaryColor,
-                                                      size: 40,
-                                                    )
-                                                  : null, // Show icon if no image is selected and no profileImageUrl exists
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                // Container replacing the cropped area
-                                const SizedBox(
-                                  height: 16,
+                if (songProvider.songImageUrl.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(4),
+                      child: Container(
+                        width: screenWidth,
+                        color: tertiaryColor,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (songProvider.bioImageUrl?.isNotEmpty ?? false)
+                              _buildBioImageSection(songProvider, screenWidth)
+                            else
+                              _buildDefaultArtistSection(songProvider),
+                            const SizedBox(height: 16),
+                            Padding(
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 16.0),
+                              child: Text(
+                                songProvider.artistName ?? '',
+                                maxLines: 3,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  color: primaryTextColor,
+                                  fontWeight: FontWeight.bold,
                                 ),
-                                Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 16.0),
-                                  child: Text(
-                                    songProvider.artistName ?? '',
-                                    maxLines: 3,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(
-                                      color: primaryTextColor,
-                                      fontWeight: FontWeight.bold,
-                                    ),
+                              ),
+                            ),
+                            if (songProvider.userBio.isNotEmpty) ...[
+                              const SizedBox(height: 4),
+                              Padding(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 16.0),
+                                child: Text(
+                                  songProvider.userBio,
+                                  maxLines: 3,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    color: quaternaryTextColor,
+                                    fontSize: microFontSize,
                                   ),
                                 ),
-                                songProvider.userBio.isNotEmpty
-                                    ? const SizedBox(
-                                        height: 4,
-                                      )
-                                    : const SizedBox.shrink(),
-                                songProvider.userBio.isNotEmpty
-                                    ? Padding(
-                                        padding: const EdgeInsets.symmetric(
-                                            horizontal: 16.0),
-                                        child: Text(
-                                          songProvider.userBio,
-                                          maxLines: 3,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: const TextStyle(
-                                            color: quaternaryTextColor,
-                                            fontSize: microFontSize,
-                                          ),
-                                        ),
-                                      )
-                                    : const SizedBox.shrink(),
-                                const SizedBox(
-                                  height: 16,
-                                ),
-                              ],
-                            ),
-                          ),
+                              ),
+                            ],
+                            const SizedBox(height: 16),
+                          ],
                         ),
-                      )
-                    : const SizedBox.shrink(),
+                      ),
+                    ),
+                  ),
               ],
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildBioImageSection(SongProvider songProvider, double screenWidth) {
+    return Stack(
+      children: [
+        ClipRect(
+          child: Align(
+            alignment: Alignment.topCenter,
+            heightFactor: songProvider.userBio.isNotEmpty ? 0.75 : 0.9,
+            child: AspectRatio(
+              aspectRatio: 1,
+              child: Image.file(
+                File(songProvider.bioImageUrl!),
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) {
+                  return Container(
+                    color: primaryTextColor,
+                    width: screenWidth * 0.22,
+                    height: screenWidth * 0.22,
+                    child: Icon(
+                      Icons.portrait,
+                      color: primaryColor,
+                      size: screenWidth * 0.11,
+                    ),
+                  );
+                },
+              ),
+            ),
+          ),
+        ),
+        _buildAboutArtistLabel(),
+      ],
+    );
+  }
+
+  Widget _buildDefaultArtistSection(SongProvider songProvider) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SizedBox(height: 16),
+          _buildDefaultAboutArtistLabel(), // No need to change this call
+          const SizedBox(height: 16),
+          CircleAvatar(
+            radius: 40,
+            backgroundColor: (songProvider.profileImageUrl?.isEmpty ?? true)
+                ? primaryTextColor
+                : tertiaryColor,
+            backgroundImage: (songProvider.profileImageUrl?.isNotEmpty ?? false)
+                ? FileImage(File(songProvider.profileImageUrl!))
+                : null,
+            child: (songProvider.profileImageUrl?.isEmpty ?? true)
+                ? Icon(
+                    Icons.person,
+                    color: primaryColor,
+                    size: 40,
+                  )
+                : null,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAboutArtistLabel() {
+    return Positioned(
+      top: 10,
+      left: 10,
+      child: Text(
+        'About the artist',
+        style: TextStyle(
+          color: primaryTextColor,
+          fontWeight: FontWeight.bold,
+          shadows: [
+            Shadow(
+              offset: const Offset(-1.0, 1.0),
+              blurRadius: 2.0,
+              color: Colors.black.withOpacity(0.5),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDefaultAboutArtistLabel() {
+    return Text(
+      'About the artist',
+      style: TextStyle(
+        color: primaryTextColor,
+        fontWeight: FontWeight.bold,
+        shadows: [
+          Shadow(
+            offset: const Offset(-1.0, 1.0),
+            blurRadius: 2.0,
+            color: Colors.black.withOpacity(0.5),
+          ),
+        ],
       ),
     );
   }

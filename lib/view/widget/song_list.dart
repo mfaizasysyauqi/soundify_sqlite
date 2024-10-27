@@ -47,12 +47,19 @@ class _SongListState extends State<SongList> {
     _loadSongs();
     _fetchLastListenedSongId();
     searchListController.addListener(_handleSearchChange);
+
+    // Add listener for liked songs updates
+    if (widget.pageName == "LikedSongContainer") {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        Provider.of<LikeProvider>(context, listen: false).fetchLikedSongs();
+      });
+    }
   }
 
   @override
   void didUpdateWidget(SongList oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // Reload songs when playlistId changes
+    // Reload songs when playlistId or pageName changes
     if (oldWidget.playlistId != widget.playlistId) {
       _loadSongs();
     }
@@ -101,6 +108,7 @@ class _SongListState extends State<SongList> {
 
   Future<void> _loadSongs() async {
     List<Song> fetchedSongs = [];
+    User? currentUser = await dbHelper.getCurrentUser();
     try {
       switch (widget.pageName) {
         case "HomeContainer":
@@ -117,10 +125,7 @@ class _SongListState extends State<SongList> {
           fetchedSongs = await dbHelper.getSongsByPlaylist(widget.playlistId);
           break;
         case "LikedSongContainer":
-          User? currentUser = await dbHelper.getCurrentUser();
-          if (currentUser != null) {
-            fetchedSongs = await dbHelper.getLikedSongs(currentUser.userId);
-          }
+          fetchedSongs = await dbHelper.getLikedSongs(currentUser!.userId);
           break;
         default:
           fetchedSongs = await dbHelper.getSongs();
@@ -149,20 +154,25 @@ class _SongListState extends State<SongList> {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer2<SongProvider, SongListItemProvider>(
-      builder: (context, songProvider, listProvider, child) {
-        List<Song> displayedSongs = listProvider.filteredSongs;
-        displayedSongs.sort((a, b) => b.timestamp.compareTo(a.timestamp));
+    return Consumer3<SongProvider, SongListItemProvider, LikeProvider>(
+      builder: (context, songProvider, listProvider, likeProvider, child) {
+        List<Song> displayedSongs = widget.pageName == "LikedSongContainer"
+            ? likeProvider.likedSongs
+            : listProvider.filteredSongs;
+
+        // // Remove the sort by timestamp for LikedSongContainer
+        // if (widget.pageName != "LikedSongContainer") {
+        //   displayedSongs.sort((a, b) => b.timestamp.compareTo(a.timestamp));
+        // }
 
         return ListView.builder(
           itemCount: displayedSongs.length,
           itemBuilder: (context, index) {
-            int reversedIndex = displayedSongs.length - 1 - index;
-            int ascendingIndex = index;
-
+            final song = displayedSongs[index];
             return SongListItem(
-              index: reversedIndex,
-              originalIndex: ascendingIndex,
+              index: index,
+              songId: song.songId, // Pass songId explicitly
+              pageName: widget.pageName,
             );
           },
         );
@@ -173,13 +183,13 @@ class _SongListState extends State<SongList> {
 
 class SongListItem extends StatefulWidget {
   final int index;
-  final int originalIndex;
-
-  const SongListItem({
-    super.key,
-    required this.index,
-    required this.originalIndex,
-  });
+  final String songId;
+  final String pageName;
+  const SongListItem(
+      {super.key,
+      required this.index,
+      required this.songId,
+      required this.pageName});
 
   @override
   _SongListItemState createState() => _SongListItemState();
@@ -195,12 +205,41 @@ class _SongListItemState extends State<SongListItem> {
     });
   }
 
+  Future<void> _handleToggleLike(
+      String songId, LikeProvider likeProvider) async {
+    final currentUser = await DatabaseHelper.instance.getCurrentUser();
+    if (currentUser == null) {
+      print('No user logged in');
+      return;
+    }
+
+    try {
+      bool isNowLiked = await DatabaseHelper.instance.toggleSongLike(
+        songId,
+        currentUser.userId,
+      );
+
+      // Update LikeProvider state
+      likeProvider.updateLikeState(songId, isNowLiked);
+
+      // Refresh liked songs list if we're in LikedSongContainer
+      if (mounted) {
+        final songList = context.findAncestorWidgetOfExactType<SongList>();
+        if (songList?.pageName == "LikedSongContainer") {
+          await likeProvider.fetchLikedSongs();
+        }
+      }
+    } catch (e) {
+      print('Error updating likes: $e');
+    }
+  }
+
   @override
   void initState() {
     super.initState();
     final listProvider =
         Provider.of<SongListItemProvider>(context, listen: false);
-    final song = listProvider.filteredSongs[widget.originalIndex];
+    final song = listProvider.filteredSongs[widget.index];
     Provider.of<LikeProvider>(context, listen: false).checkIfLiked(song.songId);
 
     songProvider = Provider.of<SongProvider>(context, listen: false);
@@ -216,7 +255,7 @@ class _SongListItemState extends State<SongListItem> {
     final currentUser = await DatabaseHelper.instance.getCurrentUser();
     final listProvider =
         Provider.of<SongListItemProvider>(context, listen: false);
-    final song = listProvider.filteredSongs[widget.originalIndex];
+    final song = listProvider.filteredSongs[widget.index];
 
     if (currentUser != null && song.likeIds != null) {
       if (mounted) {
@@ -228,7 +267,7 @@ class _SongListItemState extends State<SongListItem> {
   void _playSelectedSong() async {
     final listProvider =
         Provider.of<SongListItemProvider>(context, listen: false);
-    final song = listProvider.filteredSongs[widget.originalIndex];
+    final song = listProvider.filteredSongs[widget.index];
 
     if (songProvider?.songId == song.songId && songProvider!.isPlaying) {
       songProvider!.pauseOrResume();
@@ -255,9 +294,12 @@ class _SongListItemState extends State<SongListItem> {
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
-    return Consumer<SongListItemProvider>(
-      builder: (context, listProvider, child) {
-        final song = listProvider.filteredSongs[widget.originalIndex];
+    return Consumer2<SongListItemProvider, LikeProvider>(
+      builder: (context, listProvider, likeProvider, child) {
+        final song = widget.pageName == "LikedSongContainer"
+            ? likeProvider.likedSongs
+                .firstWhere((s) => s.songId == widget.songId)
+            : listProvider.filteredSongs[widget.index];
         final formattedDuration = _formatDuration(song.songDuration);
         final formattedDate = DateFormat('MMM d, yyyy').format(song.timestamp);
         final isClicked = listProvider.clickedIndex == widget.index;
@@ -289,6 +331,7 @@ class _SongListItemState extends State<SongListItem> {
                 isClicked,
                 formattedDuration,
                 formattedDate,
+                likeProvider,
               ),
             ),
           ),
@@ -304,6 +347,7 @@ class _SongListItemState extends State<SongListItem> {
     bool isClicked,
     String formattedDuration,
     String formattedDate,
+    LikeProvider likeProvider,
   ) {
     return Container(
       color: isClicked
@@ -334,6 +378,7 @@ class _SongListItemState extends State<SongListItem> {
               formattedDuration,
               currentSong,
               isClicked,
+              likeProvider,
             ),
           ),
         ],
@@ -350,9 +395,7 @@ class _SongListItemState extends State<SongListItem> {
       child: SizedBox(
         width: 35,
         child: Text(
-          widget.originalIndex + 1 > 1000
-              ? "𝅗𝅥"
-              : '${widget.originalIndex + 1}',
+          widget.index + 1 > 1000 ? "𝅗𝅥" : '${widget.index + 1}',
           textAlign: TextAlign.right,
           style: const TextStyle(
             color: primaryTextColor,
@@ -480,8 +523,8 @@ class _SongListItemState extends State<SongListItem> {
     );
   }
 
-  Widget _buildControls(String formattedDuration, song, bool isClicked) {
-    final likeProvider = Provider.of<LikeProvider>(context);
+  Widget _buildControls(String formattedDuration, song, bool isClicked,
+      LikeProvider likeProvider) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8.0),
       decoration: BoxDecoration(
@@ -509,7 +552,7 @@ class _SongListItemState extends State<SongListItem> {
                       size: smallFontSize,
                     ),
                     onTap: () async {
-                      await likeProvider.toggleLike(song.songId);
+                      await _handleToggleLike(song.songId, likeProvider);
                     },
                   ),
                 )
@@ -542,7 +585,7 @@ class _SongListItemState extends State<SongListItem> {
                       artistSongIndex: song.artistSongIndex,
                       songTitle: song.songTitle,
                       songDuration: song.songDuration,
-                      originalIndex: widget.originalIndex,
+                      originalIndex: widget.index,
                       likedIds: song.likeIds,
                     ),
                     'SongMenu',

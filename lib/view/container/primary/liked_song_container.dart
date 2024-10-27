@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:soundify/provider/like_provider.dart';
 import 'package:soundify/provider/widget_size_provider.dart';
 import 'package:soundify/provider/widget_state_provider_2.dart';
 import 'package:soundify/view/container/secondary/show_detail_song.dart';
@@ -24,6 +25,9 @@ class _LikedSongContainerState extends State<LikedSongContainer> {
       if (mounted) {
         Provider.of<WidgetStateProvider2>(context, listen: false)
             .changeWidget(const ShowDetailSong(), 'ShowDetailSong');
+
+        // Fetch liked songs when container is initialized
+        Provider.of<LikeProvider>(context, listen: false).fetchLikedSongs();
       }
     });
   }
@@ -93,7 +97,8 @@ class _LikedSongContainerState extends State<LikedSongContainer> {
                       TableRow(
                         children: [
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                            padding:
+                                const EdgeInsets.symmetric(horizontal: 8.0),
                             decoration: BoxDecoration(
                               border: Border.all(
                                   color: transparentColor), // Border per sel
@@ -108,7 +113,8 @@ class _LikedSongContainerState extends State<LikedSongContainer> {
                             ),
                           ),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                            padding:
+                                const EdgeInsets.symmetric(horizontal: 8.0),
                             decoration: BoxDecoration(
                               border: Border.all(
                                   color: transparentColor), // Border per sel
@@ -124,7 +130,8 @@ class _LikedSongContainerState extends State<LikedSongContainer> {
                           ),
                           if (screenWidth > 1280)
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 8.0),
                               decoration: BoxDecoration(
                                 border: Border.all(
                                     color: transparentColor), // Border per sel
@@ -142,7 +149,8 @@ class _LikedSongContainerState extends State<LikedSongContainer> {
                             const SizedBox.shrink(), // Kosong jika layar kecil
                           if (screenWidth > 1480)
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 8.0),
                               decoration: BoxDecoration(
                                 border: Border.all(
                                     color: transparentColor), // Border per sel
@@ -165,10 +173,12 @@ class _LikedSongContainerState extends State<LikedSongContainer> {
                                 width: 45,
                               ),
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 8.0),
                                 decoration: BoxDecoration(
                                   border: Border.all(
-                                      color: transparentColor), // Border per sel
+                                      color:
+                                          transparentColor), // Border per sel
                                 ),
                                 child: const SizedBox(
                                   width: 50,
@@ -198,13 +208,17 @@ class _LikedSongContainerState extends State<LikedSongContainer> {
                   ),
                 ),
                 Expanded(
-                  child: SongList(
-                    userId: currentUserId,
-                    pageName: "LikedSongContainer",
-                    playlistId: "",
-                    albumId: "",
+                  child: Consumer<LikeProvider>(
+                    builder: (context, likeProvider, child) {
+                      return SongList(
+                        userId: currentUserId,
+                        pageName: "LikedSongContainer",
+                        playlistId: "",
+                        albumId: "",
+                      );
+                    },
                   ),
-                ),
+                )
               ],
             ),
           ),

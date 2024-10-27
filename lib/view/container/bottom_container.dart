@@ -65,7 +65,7 @@ class _BottomContainerState extends State<BottomContainer> {
     });
   }
 
-  void _setupAudioPlayerListeners() {
+  Future<void> _setupAudioPlayerListeners() async {
     _audioPlayer.onPositionChanged.listen((position) {
       if (mounted) {
         setState(() => _currentPosition = position.inSeconds.toDouble());
@@ -144,13 +144,13 @@ class _BottomContainerState extends State<BottomContainer> {
     if (prefs.containsKey('lastVolumeLevel')) {
       var lastVolumeLevel = prefs['lastVolumeLevel'];
 
-      setState(() {
+      setState(() async {
         if (lastVolumeLevel is double) {
           _currentVolume = lastVolumeLevel;
         } else if (lastVolumeLevel is int) {
           _currentVolume = lastVolumeLevel.toDouble();
         }
-        _audioPlayer.setVolume(_currentVolume);
+        await _audioPlayer.setVolume(_currentVolume);
       });
     }
   }
@@ -356,20 +356,16 @@ class _BottomContainerState extends State<BottomContainer> {
         _isShuffleMode ? _shuffledPlaylist : await dbHelper.getSongs();
 
     // Get current song index
-    List<Song> songs = await dbHelper.getSongs();
-
-    // Get current song index
     int currentIndex =
         currentPlaylist.indexWhere((song) => song.songUrl == _currentSongUrl);
-
-    // Calculate previous index
-    int nextIndex = currentIndex - 1;
-    if (nextIndex < 0) {
-      nextIndex = songs.length - 1; // Loop to last song
+    // Calculate next index
+    int nextIndex = currentIndex + 1;
+    if (nextIndex >= currentPlaylist.length) {
+      nextIndex = 0; // Loop back to the first song
     }
 
-    if (songs.isNotEmpty && nextIndex < songs.length) {
-      Song nextSong = songs[nextIndex];
+    if (currentPlaylist.isNotEmpty && nextIndex < currentPlaylist.length) {
+      Song nextSong = currentPlaylist[nextIndex];
 
       // Update the song provider with new song details
       songProvider.setSong(
@@ -404,16 +400,19 @@ class _BottomContainerState extends State<BottomContainer> {
         _isShuffleMode ? _shuffledPlaylist : await dbHelper.getSongs();
 
     // Get current song index
-    List<Song> songs = await dbHelper.getSongs();
-
-    // Get current song index
     int currentIndex =
         currentPlaylist.indexWhere((song) => song.songUrl == _currentSongUrl);
 
-    // Calculate next index
-    int previousIndex = currentIndex + 1;
+    // Get current song index
+    List<Song> songs = await dbHelper.getSongs();
 
-    if (songs.isNotEmpty && previousIndex >= 0) {
+    // Calculate previous index
+    int previousIndex = currentIndex - 1;
+    if (previousIndex < 0) {
+      previousIndex = songs.length - 1; // Loop to last song
+    }
+
+    if (songs.isNotEmpty && previousIndex < songs.length) {
       Song previousSong = songs[previousIndex];
 
       // Update the song provider with new song details
@@ -603,9 +602,9 @@ class _BottomContainerState extends State<BottomContainer> {
 
   void _handleVolumeChange(double value) async {
     if (mounted) {
-      setState(() {
+      setState(() async {
         _currentVolume = value;
-        _audioPlayer.setVolume(value);
+        await _audioPlayer.setVolume(value);
         if (_isMuted) _toggleMute();
       });
 
@@ -628,8 +627,8 @@ class _BottomContainerState extends State<BottomContainer> {
   }
 
   @override
-  void dispose() {
-    _audioPlayer.dispose();
+  Future<void> dispose() async {
+    await _audioPlayer.dispose();
     super.dispose();
   }
 }
