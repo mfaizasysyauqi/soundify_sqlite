@@ -144,13 +144,17 @@ class _BottomContainerState extends State<BottomContainer> {
     if (prefs.containsKey('lastVolumeLevel')) {
       var lastVolumeLevel = prefs['lastVolumeLevel'];
 
-      setState(() async {
-        if (lastVolumeLevel is double) {
-          _currentVolume = lastVolumeLevel;
-        } else if (lastVolumeLevel is int) {
-          _currentVolume = lastVolumeLevel.toDouble();
-        }
-        await _audioPlayer.setVolume(_currentVolume);
+      // Determine volume level without calling setState
+      double newVolume = lastVolumeLevel is double
+          ? lastVolumeLevel
+          : (lastVolumeLevel as int).toDouble();
+
+      // Update volume in _audioPlayer asynchronously
+      await _audioPlayer.setVolume(newVolume);
+
+      // Update the UI with the new volume level synchronously
+      setState(() {
+        _currentVolume = newVolume;
       });
     }
   }

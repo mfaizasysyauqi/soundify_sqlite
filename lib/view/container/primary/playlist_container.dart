@@ -29,19 +29,35 @@ bool showModal = false;
 OverlayEntry? _overlayEntry;
 Uint8List? _selectedImage;
 
-final TextEditingController _playlistNameController = TextEditingController();
-final TextEditingController _playlistDescriptionController =
+late TextEditingController _playlistNameController = TextEditingController();
+late TextEditingController _playlistDescriptionController =
     TextEditingController();
 
 final DatabaseHelper _databaseHelper = DatabaseHelper.instance;
+
+PlaylistProvider? _playlistProvider;
+late ScaffoldMessengerState _scaffoldMessenger;
 
 class _PlaylistContainerState extends State<PlaylistContainer> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {});
+    _playlistNameController = TextEditingController();
+    _playlistDescriptionController = TextEditingController();
+
+    // Initialize playlist provider reference
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      _playlistProvider = Provider.of<PlaylistProvider>(context, listen: false);
       _loadPlaylistData();
     });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Store reference to ScaffoldMessenger
+    _scaffoldMessenger = ScaffoldMessenger.of(context);
   }
 
   // Function untuk memuat data playlist (jika perlu)
@@ -538,9 +554,12 @@ class _PlaylistContainerState extends State<PlaylistContainer> {
 
   @override
   void dispose() {
+    _overlayEntry?.remove();
+
+    // Dispose of the controllers directly
     _playlistNameController.dispose();
     _playlistDescriptionController.dispose();
-    _overlayEntry?.remove();
+
     super.dispose();
   }
 }

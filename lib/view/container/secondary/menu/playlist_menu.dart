@@ -31,6 +31,9 @@ final DatabaseHelper _databaseHelper = DatabaseHelper.instance;
 
 OverlayEntry? _overlayEntry;
 
+late ScaffoldMessengerState _scaffoldMessenger;
+PlaylistProvider? _playlistProvider;
+
 class _PlaylistMenuState extends State<PlaylistMenu> {
   @override
   Widget build(BuildContext context) {
@@ -492,15 +495,32 @@ class _PlaylistMenuState extends State<PlaylistMenu> {
     }
   }
 
-// In your widget class
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Store references safely
+    _scaffoldMessenger = ScaffoldMessenger.of(context);
+    _playlistProvider = Provider.of<PlaylistProvider>(context, listen: false);
+  }
+
   Future<void> _deletePlaylist(
       String playlistId, String playlistImageUrl) async {
+    if (!mounted) return; // Check if the widget is still mounted
     try {
-      // Delete the playlist and update indexes
-      await _databaseHelper.deletePlaylist(playlistId);
+      // Access PlaylistProvider
+      final playlistProvider =
+          Provider.of<PlaylistProvider>(context, listen: false);
 
-      // Update UI
+      // Delete the playlist and trigger real-time update
+      await playlistProvider.deletePlaylistById(playlistId);
+
       if (mounted) {
+        // Show success message if the widget is still mounted
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Playlist deleted successfully')),
+        );
+
+        // Optionally update related widgets
         Provider.of<WidgetStateProvider1>(context, listen: false)
             .changeWidget(const HomeContainer(), 'Home Container');
         Provider.of<WidgetStateProvider2>(context, listen: false)
@@ -508,10 +528,10 @@ class _PlaylistMenuState extends State<PlaylistMenu> {
       }
     } catch (e) {
       print("Error deleting playlist: $e");
-      // You might want to show an error message to the user here
       if (mounted) {
+        // Show error message if the widget is still mounted
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to delete playlist: ${e.toString()}')),
+          SnackBar(content: Text('Error deleting playlist: $e')),
         );
       }
     }

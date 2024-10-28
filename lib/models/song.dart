@@ -108,4 +108,38 @@ class Song {
       playedIds: [], // Empty list for playedIds
     );
   }
+  // Tambahkan method copyWith
+  Song copyWith({
+    String? songId,
+    String? senderId,
+    String? artistId,
+    String? albumId,
+    String? songTitle,
+    String? songImageUrl,
+    String? songUrl,
+    Duration? songDuration,
+    DateTime? timestamp,
+    int? artistSongIndex,
+    List<String>? likeIds,
+    List<String>? playlistIds,
+    List<String>? albumIds,
+    List<String>? playedIds,
+  }) {
+    return Song(
+      songId: songId ?? this.songId,
+      senderId: senderId ?? this.senderId,
+      artistId: artistId ?? this.artistId,
+      albumId: albumId ?? this.albumId,
+      songTitle: songTitle ?? this.songTitle,
+      songImageUrl: songImageUrl ?? this.songImageUrl,
+      songUrl: songUrl ?? this.songUrl,
+      songDuration: songDuration ?? this.songDuration,
+      timestamp: timestamp ?? this.timestamp,
+      artistSongIndex: artistSongIndex ?? this.artistSongIndex,
+      likeIds: likeIds ?? this.likeIds,
+      playlistIds: playlistIds ?? this.playlistIds,
+      albumIds: albumIds ?? this.albumIds,
+      playedIds: playedIds ?? this.playedIds,
+    );
+  }
 }

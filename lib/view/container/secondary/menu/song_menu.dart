@@ -1,11 +1,13 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:soundify/components/playlist_item.dart';
 import 'package:soundify/database/database_helper.dart';
 import 'package:soundify/database/file_storage_helper.dart';
 import 'package:soundify/models/playlist.dart';
 import 'package:soundify/models/song.dart';
 import 'package:soundify/models/user.dart';
+import 'package:soundify/provider/playlist_provider.dart';
 import 'package:soundify/provider/widget_state_provider_1.dart';
 import 'package:soundify/provider/widget_state_provider_2.dart';
 import 'package:soundify/view/container/primary/edit_song_container.dart';
@@ -15,7 +17,6 @@ import 'package:soundify/view/main_page.dart';
 import 'package:soundify/view/style/style.dart';
 import 'package:sqflite/sqflite.dart' show Transaction;
 import 'dart:math' as math;
-import 'package:uuid/uuid.dart';
 
 class SongMenu extends StatefulWidget {
   final Function(Widget) onChangeWidget;
@@ -58,7 +59,8 @@ class _SongMenuState extends State<SongMenu> {
   bool _isCreatePlaylistVisible = false;
   bool _isHoveredSearchPlaylist = false;
 
-  final TextEditingController _searchPlaylistController = TextEditingController();
+  final TextEditingController _searchPlaylistController =
+      TextEditingController();
 
   @override
   void initState() {
@@ -81,8 +83,8 @@ class _SongMenuState extends State<SongMenu> {
       playlistIds: [],
       albumIds: [],
       playedIds: [],
-    ); 
-    
+    );
+
     // Add listener to controller
     _searchPlaylistController.addListener(() {
       if (mounted) {
@@ -536,8 +538,6 @@ class _SongMenuState extends State<SongMenu> {
   }
 
   Widget _buildAddToPlaylistContainer(double screenWidth, Song song) {
-    final DatabaseHelper _dbHelper = DatabaseHelper.instance;
-
     return Container(
       decoration: BoxDecoration(
         border: Border.all(color: transparentColor),
@@ -630,44 +630,14 @@ class _SongMenuState extends State<SongMenu> {
                       color: Colors.transparent,
                       child: InkWell(
                         onTap: () async {
-                          // Create new playlist functionality
-                          String currentUserId =
-                              (await _dbHelper.getCurrentUser())?.userId ?? '';
-                          // Ambil instance database SQLite
-                          final db = await DatabaseHelper.instance.database;
-
-                          // Ambil jumlah playlist yang ada di SQLite untuk menghitung `playlistUserIndex`
-                          final List<Map<String, dynamic>> existingPlaylists =
-                              await db.query(
-                            'playlists',
-                            where: 'creatorId = ?',
-                            whereArgs: [currentUserId],
-                          );
-
-                          int playlistUserIndex = existingPlaylists.length + 1;
-
-                          final playlistId = Uuid().v4();
-
-                          final newPlaylist = Playlist(
-                            playlistId:
-                                playlistId, // Menggunakan UUID sebagai playlistId
-                            creatorId: currentUserId,
-                            playlistName: "Playlist #$playlistUserIndex",
-                            playlistDescription: "",
-                            playlistImageUrl: "",
-                            timestamp: DateTime.now(),
-                            playlistUserIndex: playlistUserIndex,
-                            songListIds: [],
-                            playlistLikeIds: [],
-                            totalDuration: Duration.zero,
-                          );
-
-                          await _dbHelper.insertPlaylist(newPlaylist);
-
-                          // Update UI by calling setState if needed
-                          if (context.mounted) {
-                            setState(() {});
-                          }
+                          // Panggil fungsi untuk menyimpan data playlist
+                          await Provider.of<PlaylistProvider>(context,
+                                  listen: false)
+                              .submitNewPlaylist(context);
+                          // // Update UI by calling setState if needed
+                          // if (context.mounted) {
+                          //   setState(() {});
+                          // }
                         },
                         hoverColor: primaryTextColor.withOpacity(0.1),
                         child: const Padding(
@@ -701,142 +671,52 @@ class _SongMenuState extends State<SongMenu> {
                   color: primaryTextColor,
                 ),
               ),
+              // song_menu.dart
               Expanded(
-                child: ValueListenableBuilder<TextEditingValue>(
-                  valueListenable: _searchPlaylistController,
-                  builder: (context, searchValue, _) {
-                    return FutureBuilder<List<Playlist>>(
-                      future: _dbHelper.getPlaylists().then((playlists) async {
-                        final currentUser = await _dbHelper.getCurrentUser();
-                        return playlists
-                            .where((playlist) =>
-                                playlist.creatorId == currentUser?.userId &&
-                                playlist.playlistName
-                                    .toLowerCase()
-                                    .contains(searchValue.text.toLowerCase()))
-                            .toList();
-                      }),
-                      builder: (context, snapshot) {
-                        if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                          return const Center(
-                            child: Text(
-                              'No playlists found',
-                              style: TextStyle(color: primaryTextColor),
-                            ),
-                          );
-                        }
+                child: Consumer<PlaylistProvider>(
+                  builder: (context, playlistProvider, _) {
+                    // Filter playlists berdasarkan search query
+                    final filteredPlaylists = playlistProvider.displayPlaylists
+                        .where((playlist) => playlist['playlistName']
+                            .toString()
+                            .toLowerCase()
+                            .contains(
+                                _searchPlaylistController.text.toLowerCase()))
+                        .toList();
 
-                        final playlists = snapshot.data!;
-                        playlists.sort((a, b) =>
-                            b.playlistUserIndex.compareTo(a.playlistUserIndex));
+                    // if (playlistProvider.isFetching) {
+                    //   return const Center(child: CircularProgressIndicator());
+                    // }
 
-                        return ListView.builder(
-                          itemCount: playlists.length,
-                          itemBuilder: (context, index) {
-                            final playlist = playlists[index];
-                            bool isHovered = false;
+                    if (filteredPlaylists.isEmpty) {
+                      return const Center(
+                        child: Text(
+                          'No playlists found',
+                          style: TextStyle(color: primaryTextColor),
+                        ),
+                      );
+                    }
 
-                            return StatefulBuilder(
-                              builder: (context, setState) {
-                                return MouseRegion(
-                                  onEnter: (_) =>
-                                      setState(() => isHovered = true),
-                                  onExit: (_) =>
-                                      setState(() => isHovered = false),
-                                  child: Container(
-                                    color: isHovered
-                                        ? primaryTextColor.withOpacity(0.1)
-                                        : Colors.transparent,
-                                    child: ListTile(
-                                      contentPadding:
-                                          const EdgeInsets.symmetric(
-                                              vertical: 0.0, horizontal: 16.0),
-                                      title: Text(
-                                        playlist.playlistName,
-                                        style: const TextStyle(
-                                          color: primaryTextColor,
-                                          fontSize: tinyFontSize,
-                                        ),
-                                      ),
-                                      onTap: () async {
-                                        try {
-                                          // Add song to playlist
-                                          List<String> updatedSongList =
-                                              List<String>.from(
-                                                  playlist.songListIds ?? []);
-                                          updatedSongList.add(song.songId);
-
-                                          // Update playlist's total duration
-                                          Duration newTotalDuration =
-                                              (playlist.totalDuration) +
-                                                  song.songDuration;
-
-                                          // Update playlist
-                                          final updatedPlaylist = Playlist(
-                                            playlistId: playlist.playlistId,
-                                            creatorId: playlist.creatorId,
-                                            playlistName: playlist.playlistName,
-                                            playlistDescription:
-                                                playlist.playlistDescription,
-                                            playlistImageUrl:
-                                                playlist.playlistImageUrl,
-                                            timestamp: playlist.timestamp,
-                                            playlistUserIndex:
-                                                playlist.playlistUserIndex,
-                                            songListIds: updatedSongList,
-                                            totalDuration: newTotalDuration,
-                                          );
-
-                                          await _dbHelper
-                                              .updatePlaylist(updatedPlaylist);
-
-                                          // Update song's playlist IDs
-                                          List<String> updatedPlaylistIds =
-                                              List<String>.from(
-                                                  song.playlistIds ?? []);
-                                          updatedPlaylistIds
-                                              .add(playlist.playlistId);
-
-                                          final updatedSong = Song(
-                                            songId: song.songId,
-                                            senderId: song.senderId,
-                                            artistId: song.artistId,
-                                            albumId: song.albumId,
-                                            songTitle: song.songTitle,
-                                            songImageUrl: song.songImageUrl,
-                                            songUrl: song.songUrl,
-                                            songDuration: song.songDuration,
-                                            timestamp: song.timestamp,
-                                            artistSongIndex:
-                                                song.artistSongIndex,
-                                            likeIds: song.likeIds,
-                                            playlistIds: updatedPlaylistIds,
-                                            albumIds: song.albumIds,
-                                            playedIds: song.playedIds,
-                                          );
-
-                                          await _dbHelper
-                                              .updateSong(updatedSong);
-
-                                          print(
-                                              'Song added to playlist: ${playlist.playlistName}');
-                                        } catch (error) {
-                                          print(
-                                              'Error adding song to playlist: $error');
-                                        }
-                                      },
-                                    ),
-                                  ),
-                                );
-                              },
-                            );
+                    return ListView.builder(
+                      itemCount: filteredPlaylists.length,
+                      itemBuilder: (context, index) {
+                        final playlist = filteredPlaylists[index];
+                        return PlaylistListItem(
+                          playlist: playlist,
+                          song: song,
+                          onAddToPlaylist: (playlistData) async {
+                            try {
+                              await _addSongToPlaylist(playlistData, song);
+                            } catch (error) {
+                              print('Error adding song to playlist: $error');
+                            }
                           },
                         );
                       },
                     );
                   },
                 ),
-              ),
+              )
             ],
           ),
         ),
@@ -999,4 +879,35 @@ Future<void> _deleteFile(String filePath) async {
     print('Error deleting file $filePath: $e');
     // Don't rethrow - we want to continue even if file deletion fails
   }
+}
+// Helper function to add song to playlist
+Future<void> _addSongToPlaylist(
+  Map<String, dynamic> playlist,
+  Song song,
+) async {
+  final updatedSongList = List<String>.from(playlist['songListIds'] ?? []);
+  updatedSongList.add(song.songId);
+
+  final newTotalDuration = (playlist['totalDuration'] as Duration) + song.songDuration;
+
+  final updatedPlaylist = Playlist(
+    playlistId: playlist['playlistId'],
+    creatorId: playlist['creatorId'],
+    playlistName: playlist['playlistName'],
+    playlistDescription: playlist['playlistDescription'],
+    playlistImageUrl: playlist['playlistImageUrl'],
+    timestamp: playlist['timestamp'],
+    playlistUserIndex: playlist['playlistUserIndex'],
+    songListIds: updatedSongList,
+    totalDuration: newTotalDuration,
+  );
+
+  await DatabaseHelper.instance.updatePlaylist(updatedPlaylist);
+
+  // Update song's playlist IDs
+  final updatedPlaylistIds = List<String>.from(song.playlistIds ?? []);
+  updatedPlaylistIds.add(playlist['playlistId']);
+
+  final updatedSong = song.copyWith(playlistIds: updatedPlaylistIds);
+  await DatabaseHelper.instance.updateSong(updatedSong);
 }

@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:soundify/database/database_helper.dart';
-import 'package:soundify/models/playlist.dart';
 import 'package:soundify/provider/playlist_provider.dart';
 import 'package:soundify/provider/widget_size_provider.dart';
 import 'package:soundify/provider/widget_state_provider_1.dart';
@@ -17,7 +16,6 @@ import 'package:soundify/view/style/style.dart';
 import 'package:provider/provider.dart';
 import 'package:soundify/view/widget/play_list.dart';
 import 'package:soundify/view/widget/song_list.dart';
-import 'package:uuid/uuid.dart';
 
 class MainPage extends StatefulWidget {
   final activeWidget1;
@@ -46,138 +44,10 @@ class _MainPageState extends State<MainPage> {
   void initState() {
     super.initState();
     // _getUserId(); // Dapatkan userId saat widget diinisialisasi
-    fetchPlaylists();
-  }
-
-  Future<void> fetchPlaylists() async {
-    try {
-      final db = await DatabaseHelper.instance.database;
-
-      // Get current user from SQLite
-      final user = await DatabaseHelper.instance.getCurrentUser();
-      print("User ID: ${user?.userId}"); // Print User ID to ensure its value
-
-      if (user == null) {
-        print("User tidak ditemukan. Gagal menambahkan playlist.");
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Gagal menambahkan playlist: User tidak ditemukan'),
-          ),
-        );
-        return;
-      }
-
-      // Query playlists by creatorId
-      final creatorPlaylists = await db.query(
-        'playlists',
-        where: 'creatorId = ?',
-        whereArgs: [user.userId],
-      );
-      print("Creator Playlists: ${creatorPlaylists.length}");
-
-      // Query liked playlists
-      final likedPlaylists = await db.query(
-        'playlists',
-        where: 'playlistLikeIds LIKE ?',
-        whereArgs: ['%${user.userId}%'],
-      );
-      print("Liked Playlists: ${likedPlaylists.length}");
-
-      if (mounted) {
-        final Set<String> playlistIds = {};
-        final List<Map<String, dynamic>> combinedPlaylists = [];
-
-        // Cache to store fetched usernames to avoid duplicate queries
-        Map<String, String?> userNameCache = {};
-
-        // Function to fetch username and cache it
-        Future<String> fetchUserName(String creatorId) async {
-          if (userNameCache.containsKey(creatorId)) {
-            return userNameCache[creatorId] ?? 'Creator name not found';
-          }
-
-          // Fetch username from SQLite
-          final creator = await DatabaseHelper.instance.getUserById(creatorId);
-          final creatorName = creator?.fullName ?? 'Creator name not found';
-          userNameCache[creatorId] = creatorName;
-          return creatorName;
-        }
-
-        // Process and combine creator playlists
-        for (var playlist in creatorPlaylists) {
-          final playlistId = (playlist['playlistId'] ?? '').toString();
-          if (!playlistIds.contains(playlistId)) {
-            playlistIds.add(playlistId);
-
-            final creatorId = (playlist['creatorId'] ?? '').toString();
-            final creatorName = await fetchUserName(creatorId);
-
-            combinedPlaylists.add({
-              'creatorId': creatorId,
-              'creatorName': creatorName,
-              'playlistId': playlistId,
-              'playlistName': (playlist['playlistName'] ?? '').toString(),
-              'playlistDescription':
-                  (playlist['playlistDescription'] ?? '').toString(),
-              'playlistImageUrl':
-                  (playlist['playlistImageUrl'] ?? '').toString(),
-              'timestamp':
-                  DateTime.parse((playlist['timestamp'] ?? '').toString()),
-              'playlistUserIndex': playlist['playlistUserIndex'] ?? 0,
-              'songListIds': playlist['songListIds'] != null
-                  ? (playlist['songListIds'] as String).split(',')
-                  : [],
-              'totalDuration': playlist['totalDuration'] is int
-                  ? Duration(seconds: playlist['totalDuration'] as int)
-                  : (playlist['totalDuration'] as Duration?) ?? Duration.zero,
-            });
-          }
-        }
-
-        // Process and combine liked playlists, avoiding duplicates
-        for (var playlist in likedPlaylists) {
-          final playlistId = (playlist['playlistId'] ?? '').toString();
-          if (!playlistIds.contains(playlistId)) {
-            playlistIds.add(playlistId);
-
-            final creatorId = (playlist['creatorId'] ?? '').toString();
-            final creatorName = await fetchUserName(creatorId);
-
-            combinedPlaylists.add({
-              'creatorId': creatorId,
-              'creatorName': creatorName,
-              'playlistId': playlistId,
-              'playlistName': (playlist['playlistName'] ?? '').toString(),
-              'playlistDescription':
-                  (playlist['playlistDescription'] ?? '').toString(),
-              'playlistImageUrl':
-                  (playlist['playlistImageUrl'] ?? '').toString(),
-              'timestamp':
-                  DateTime.parse((playlist['timestamp'] ?? '').toString()),
-              'playlistUserIndex': playlist['playlistUserIndex'] ?? 0,
-              'songListIds': playlist['songListIds'] != null
-                  ? (playlist['songListIds'] as String).split(',')
-                  : [],
-              'totalDuration': playlist['totalDuration'] is int
-                  ? Duration(seconds: playlist['totalDuration'] as int)
-                  : (playlist['totalDuration'] as Duration?) ?? Duration.zero,
-            });
-          }
-        }
-
-        print(
-            "Combined Playlists (after deduplication): ${combinedPlaylists.length}");
-
-        // Sort playlists by playlistUserIndex in descending order
-        combinedPlaylists.sort(
-            (a, b) => b['playlistUserIndex'].compareTo(a['playlistUserIndex']));
-
-        // Update StreamController with the combined and deduplicated playlists
-        _playlistsController.add(combinedPlaylists);
-      }
-    } catch (error) {
-      print("Error fetching playlists from SQLite: $error");
-    }
+    // Panggil fetchPlaylists saat halaman diinisialisasi
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Provider.of<PlaylistProvider>(context, listen: false).fetchPlaylists();
+    });
   }
 
   @override
@@ -259,7 +129,9 @@ class _MainPageState extends State<MainPage> {
                       child: TextButton(
                         onPressed: () async {
                           // Panggil fungsi untuk menyimpan data playlist
-                          await _submitPlaylistData(context);
+                          await Provider.of<PlaylistProvider>(context,
+                                  listen: false)
+                              .submitNewPlaylist(context);
 
                           // Ambil playlist terbaru dari SQLite
                           var latestPlaylist;
@@ -301,14 +173,15 @@ class _MainPageState extends State<MainPage> {
                             });
                           }
 
+                          // Navigate to playlist container with the correct ID
                           Provider.of<WidgetStateProvider1>(context,
                                   listen: false)
                               .changeWidget(
                             PlaylistContainer(
-                                playlistId: latestPlaylist['playlistId']),
+                              playlistId: latestPlaylist.playlistId,
+                            ),
                             'PlaylistContainer',
                           );
-
                           // Tutup modal setelah tindakan selesai
                           _closeModal();
                         },
@@ -571,72 +444,114 @@ class _MainPageState extends State<MainPage> {
                                                 Padding(
                                                   padding: const EdgeInsets
                                                       .symmetric(
-                                                    horizontal: 8.0,
-                                                  ),
-                                                  child: StreamBuilder<
-                                                      List<
-                                                          Map<String,
-                                                              dynamic>>>(
-                                                    stream: _playlistsController
-                                                        .stream,
-                                                    builder:
-                                                        (context, snapshot) {
-                                                      if (!snapshot.hasData) {
-                                                        return const Center(
-                                                          child:
-                                                              CircularProgressIndicator(
-                                                            color:
-                                                                primaryTextColor,
-                                                          ), // Spi,
+                                                      horizontal: 8.0),
+                                                  child: Consumer<
+                                                      PlaylistProvider>(
+                                                    builder: (context,
+                                                        playlistProvider,
+                                                        child) {
+                                                      // if (playlistProvider
+                                                      //     .isFetching) {
+                                                      //   return const Center(
+                                                      //     child:
+                                                      //         CircularProgressIndicator(
+                                                      //       color:
+                                                      //           primaryTextColor,
+                                                      //     ),
+                                                      //   );
+                                                      // }
+
+                                                      if (playlistProvider
+                                                          .hasError) {
+                                                        return Center(
+                                                          child: Column(
+                                                            mainAxisAlignment:
+                                                                MainAxisAlignment
+                                                                    .center,
+                                                            children: [
+                                                              Text(
+                                                                  'Failed to load playlists'),
+                                                              ElevatedButton(
+                                                                onPressed: () {
+                                                                  Provider.of<PlaylistProvider>(
+                                                                          context,
+                                                                          listen:
+                                                                              false)
+                                                                      .fetchPlaylists();
+                                                                },
+                                                                child: Text(
+                                                                    'Retry'),
+                                                              ),
+                                                            ],
+                                                          ),
                                                         );
                                                       }
 
-                                                      final playlists =
-                                                          snapshot.data!;
+                                                      if (playlistProvider
+                                                          .displayPlaylists
+                                                          .isEmpty) {
+                                                        return const Center(
+                                                          child: Text(
+                                                              'No playlists found'),
+                                                        );
+                                                      }
 
                                                       return ListView.builder(
-                                                        shrinkWrap:
-                                                            true, // Prevent ListView from expanding indefinitely
+                                                        shrinkWrap: true,
                                                         physics:
-                                                            const NeverScrollableScrollPhysics(), // Disable scrolling for this ListView
+                                                            const NeverScrollableScrollPhysics(),
                                                         itemCount:
-                                                            playlists.length,
+                                                            playlistProvider
+                                                                .displayPlaylists
+                                                                .length,
                                                         itemBuilder:
                                                             (context, index) {
                                                           final playlist =
-                                                              playlists[index];
+                                                              playlistProvider
+                                                                      .displayPlaylists[
+                                                                  index];
 
-                                                          // Wrap PlayList widget with GestureDetector or InkWell for handling tap
                                                           return GestureDetector(
                                                             onTap: () {
-                                                              setState(() {
-                                                                Provider.of<PlaylistProvider>(
-                                                                        context,
-                                                                        listen:
-                                                                            false)
-                                                                    .updatePlaylistProvider(
-                                                                  playlist[
-                                                                      'playlistId'],
-                                                                  playlist[
-                                                                      'creatorId'],
-                                                                  playlist[
-                                                                      'playlistName'],
-                                                                  playlist[
-                                                                      'playlistDescription'],
-                                                                  playlist[
-                                                                      'playlistImageUrl'],
-                                                                  playlist[
-                                                                      'timestamp'],
-                                                                  playlist[
-                                                                      'playlistUserIndex'],
-                                                                  playlist[
-                                                                      'songListIds'],
-                                                                  playlist[
-                                                                      'playlistLikeIds'],
-                                                                  playlist[
-                                                                      'totalDuration'],
-                                                                );
-                                                              });
+                                                              // Perbarui cara akses data playlist
+                                                              Provider.of<PlaylistProvider>(
+                                                                      context,
+                                                                      listen:
+                                                                          false)
+                                                                  .updatePlaylistProvider(
+                                                                playlist[
+                                                                        'playlistId']
+                                                                    as String,
+                                                                playlist[
+                                                                        'creatorId']
+                                                                    as String,
+                                                                playlist[
+                                                                        'playlistName']
+                                                                    as String,
+                                                                playlist[
+                                                                        'playlistDescription']
+                                                                    as String?,
+                                                                playlist[
+                                                                        'playlistImageUrl']
+                                                                    as String?,
+                                                                playlist[
+                                                                        'timestamp']
+                                                                    as DateTime,
+                                                                playlist[
+                                                                        'playlistUserIndex']
+                                                                    as int,
+                                                                (playlist['songListIds']
+                                                                        as List)
+                                                                    .cast<
+                                                                        String>(),
+                                                                (playlist['playlistLikeIds']
+                                                                        as List)
+                                                                    .cast<
+                                                                        String>(),
+                                                                playlist[
+                                                                        'totalDuration']
+                                                                    as Duration,
+                                                              );
 
                                                               Provider.of<WidgetStateProvider1>(
                                                                       context,
@@ -644,9 +559,9 @@ class _MainPageState extends State<MainPage> {
                                                                           false)
                                                                   .changeWidget(
                                                                 PlaylistContainer(
-                                                                  playlistId:
-                                                                      playlist[
-                                                                          'playlistId'],
+                                                                  playlistId: playlist[
+                                                                          'playlistId']
+                                                                      as String,
                                                                 ),
                                                                 'PlaylistContainer',
                                                               );
@@ -654,19 +569,22 @@ class _MainPageState extends State<MainPage> {
                                                             child: PlayList(
                                                               playlistImageUrl:
                                                                   playlist[
-                                                                      'playlistImageUrl'],
+                                                                          'playlistImageUrl']
+                                                                      as String,
                                                               playlistName:
                                                                   playlist[
-                                                                      'playlistName'],
+                                                                          'playlistName']
+                                                                      as String,
                                                               creatorName: playlist[
-                                                                  'creatorName'],
+                                                                      'creatorName']
+                                                                  as String,
                                                             ),
                                                           );
                                                         },
                                                       );
                                                     },
                                                   ),
-                                                ),
+                                                )
                                               ],
                                             ),
                                           ),
@@ -1010,66 +928,5 @@ class _MainPageState extends State<MainPage> {
         ),
       ),
     );
-  }
-
-  final StreamController<List<Map<String, dynamic>>> _playlistsController =
-      StreamController();
-
-  Future<void> _submitPlaylistData(BuildContext context) async {
-    try {
-      // Dapatkan pengguna saat ini dari SQLite
-      final user = await DatabaseHelper.instance.getCurrentUser();
-
-      if (user == null) {
-        print("User tidak ditemukan. Gagal menambahkan playlist.");
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Gagal menambahkan playlist: User tidak ditemukan'),
-          ),
-        );
-        return;
-      }
-
-      // Ambil instance database SQLite
-      final db = await DatabaseHelper.instance.database;
-
-      // Ambil jumlah playlist yang ada di SQLite untuk menghitung `playlistUserIndex`
-      final List<Map<String, dynamic>> existingPlaylists = await db.query(
-        'playlists',
-        where: 'creatorId = ?',
-        whereArgs: [user.userId],
-      );
-
-      int playlistUserIndex = existingPlaylists.length + 1;
-
-      final playlistId = Uuid().v4();
-
-      // Buat objek Playlist baru
-      final newPlaylist = Playlist(
-        playlistId: playlistId, // Menggunakan UUID sebagai playlistId
-        creatorId: user.userId,
-        playlistName: "Playlist #$playlistUserIndex",
-        playlistDescription: "",
-        playlistImageUrl: "",
-        timestamp: DateTime.now(),
-        playlistUserIndex: playlistUserIndex,
-        songListIds: [],
-        playlistLikeIds: [],
-        totalDuration: Duration.zero,
-      );
-
-      // Simpan playlist di SQLite
-      await DatabaseHelper.instance.insertPlaylist(newPlaylist);
-
-      // Tampilkan snackbar sukses
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Playlist berhasil ditambahkan!')),
-      );
-    } catch (e) {
-      print('Error submitting playlist data: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Gagal menambahkan playlist: $e')),
-      );
-    }
   }
 }
