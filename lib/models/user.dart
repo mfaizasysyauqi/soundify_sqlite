@@ -1,12 +1,12 @@
 class User {
   final String userId;
-  final String fullName;
-  final String username;
+  late final String fullName;
+  late final String username;
   final String email;
   final String password;
-  final String profileImageUrl;
-  final String bioImageUrl;
-  final String bio;
+  late final String profileImageUrl;
+  late final String bioImageUrl;
+  late final String bio;
   final String role;
   final List<String> followers;
   final List<String> following;
@@ -38,19 +38,26 @@ class User {
   User copyWith({
     String? lastListenedSongId,
     double? lastVolumeLevel,
+    String? fullName,
+    String? username,
+    String? profileImageUrl,
+    String? bioImageUrl,
+    String? bio,
+    List<String>? followers,
+    List<String>? following,
   }) {
     return User(
       userId: userId,
-      fullName: fullName,
-      username: username,
+      fullName: fullName ?? this.fullName,
+      username: username ?? this.username,
       email: email,
       password: password,
-      profileImageUrl: profileImageUrl,
-      bioImageUrl: bioImageUrl,
-      bio: bio,
+      profileImageUrl: profileImageUrl ?? this.profileImageUrl,
+      bioImageUrl: bioImageUrl ?? this.bioImageUrl,
+      bio: bio ?? this.bio,
       role: role,
-      followers: followers,
-      following: following,
+      followers: followers ?? this.followers,
+      following: following ?? this.following,
       userLikedSongs: userLikedSongs,
       userLikedAlbums: userLikedAlbums,
       userLikedPlaylists: userLikedPlaylists,
@@ -69,14 +76,34 @@ class User {
       profileImageUrl: map['profileImageUrl'] ?? '',
       bioImageUrl: map['bioImageUrl'] ?? '',
       bio: map['bio'] ?? '',
-      role: map['role'] ?? '',
-      followers: _parseStringList(map['followers']),
-      following: _parseStringList(map['following']),
-      userLikedSongs: _parseStringList(map['userLikedSongs']),
-      userLikedAlbums: _parseStringList(map['userLikedAlbums']),
-      userLikedPlaylists: _parseStringList(map['userLikedPlaylists']),
+      role: map['role'] ?? 'user',
+      followers: (map['followers'] ?? '')
+          .toString()
+          .split(',')
+          .where((e) => e.isNotEmpty)
+          .toList(),
+      following: (map['following'] ?? '')
+          .toString()
+          .split(',')
+          .where((e) => e.isNotEmpty)
+          .toList(),
+      userLikedSongs: (map['userLikedSongs'] ?? '')
+          .toString()
+          .split(',')
+          .where((e) => e.isNotEmpty)
+          .toList(),
+      userLikedAlbums: (map['userLikedAlbums'] ?? '')
+          .toString()
+          .split(',')
+          .where((e) => e.isNotEmpty)
+          .toList(),
+      userLikedPlaylists: (map['userLikedPlaylists'] ?? '')
+          .toString()
+          .split(',')
+          .where((e) => e.isNotEmpty)
+          .toList(),
       lastListenedSongId: map['lastListenedSongId'] ?? '',
-      lastVolumeLevel: map['lastVolumeLevel'] ?? 0.5,
+      lastVolumeLevel: (map['lastVolumeLevel'] ?? 0.5) as double,
     );
   }
 

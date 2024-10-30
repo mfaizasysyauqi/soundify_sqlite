@@ -6,8 +6,10 @@ import 'package:soundify/database/database_helper.dart';
 import 'package:soundify/database/file_storage_helper.dart';
 import 'package:soundify/models/playlist.dart';
 import 'package:soundify/models/song.dart';
-import 'package:soundify/models/user.dart';
+import 'package:soundify/provider/like_provider.dart';
 import 'package:soundify/provider/playlist_provider.dart';
+import 'package:soundify/provider/song_list_item_provider.dart';
+import 'package:soundify/provider/song_provider.dart';
 import 'package:soundify/provider/widget_state_provider_1.dart';
 import 'package:soundify/provider/widget_state_provider_2.dart';
 import 'package:soundify/view/container/primary/edit_song_container.dart';
@@ -31,6 +33,8 @@ class SongMenu extends StatefulWidget {
   final Duration songDuration;
   final int? originalIndex; // Made nullable with ?
   final List<String>? likedIds;
+  final String pageName;
+  final String playlistId;
 
   const SongMenu({
     super.key,
@@ -46,6 +50,8 @@ class SongMenu extends StatefulWidget {
     required this.songDuration,
     this.originalIndex, // Made optional by removing required
     this.likedIds,
+    required this.pageName,
+    required this.playlistId,
   });
 
   @override
@@ -53,7 +59,7 @@ class SongMenu extends StatefulWidget {
 }
 
 class _SongMenuState extends State<SongMenu> {
-  bool _isLiked = false; // Added missing _isLiked variable
+// Added missing _isLiked variable
   late Song _song; // Add this field to store the Song object
   bool _isAddToPlaylistMenuVisible = false;
   bool _isCreatePlaylistVisible = false;
@@ -65,25 +71,7 @@ class _SongMenuState extends State<SongMenu> {
   @override
   void initState() {
     super.initState();
-    _checkIfLiked();
-    // Initialize the Song object from widget properties
-    _song = Song(
-      songId: widget.songId,
-      songUrl: widget.songUrl,
-      songImageUrl: widget.songImageUrl,
-      artistId: widget.artistId,
-      albumId: widget.albumId,
-      songTitle: widget.songTitle,
-      songDuration: widget.songDuration,
-      artistSongIndex: widget.artistSongIndex,
-      // Initialize other required fields with default values or null
-      senderId: '', // Add appropriate default value
-      timestamp: DateTime.now(),
-      likeIds: widget.likedIds ?? [],
-      playlistIds: [],
-      albumIds: [],
-      playedIds: [],
-    );
+    _initializeSong();
 
     // Add listener to controller
     _searchPlaylistController.addListener(() {
@@ -103,20 +91,29 @@ class _SongMenuState extends State<SongMenu> {
     super.dispose();
   }
 
-  Future<void> _checkIfLiked() async {
-    final currentUser = await DatabaseHelper.instance.getCurrentUser();
-    if (currentUser != null && widget.likedIds != null) {
-      if (mounted) {
-        setState(() {
-          _isLiked = widget.likedIds!.contains(currentUser.userId);
-        });
-      }
-    }
+  void _initializeSong() {
+    _song = Song(
+      songId: widget.songId,
+      songUrl: widget.songUrl,
+      songImageUrl: widget.songImageUrl,
+      artistId: widget.artistId,
+      albumId: widget.albumId,
+      songTitle: widget.songTitle,
+      songDuration: widget.songDuration,
+      artistSongIndex: widget.artistSongIndex,
+      senderId: '',
+      timestamp: DateTime.now(),
+      likeIds: widget.likedIds ?? [],
+      playlistIds: [],
+      albumIds: [],
+      playedIds: [],
+    );
   }
 
-  void _onLikedChanged(bool _isLiked) async {
-    // Get current user from DatabaseHelper
-    User? currentUser = await DatabaseHelper.instance.getCurrentUser();
+  // Replace _onLikedChanged with this new method
+  Future<void> _handleToggleLike(BuildContext context) async {
+    final likeProvider = Provider.of<LikeProvider>(context, listen: false);
+    final currentUser = await DatabaseHelper.instance.getCurrentUser();
 
     if (currentUser == null) {
       print('No user logged in');
@@ -124,16 +121,13 @@ class _SongMenuState extends State<SongMenu> {
     }
 
     try {
-      bool newLikeStatus = await DatabaseHelper.instance.toggleSongLike(
+      bool isNowLiked = await DatabaseHelper.instance.toggleSongLike(
         widget.songId,
         currentUser.userId,
       );
 
-      // Update UI if needed
-      setState(() {
-        // Update local state to reflect new like status
-        _isLiked = newLikeStatus;
-      });
+      // Update LikeProvider state
+      likeProvider.updateLikeState(widget.songId, isNowLiked);
     } catch (e) {
       print('Error updating likes: $e');
     }
@@ -141,6 +135,8 @@ class _SongMenuState extends State<SongMenu> {
 
   @override
   Widget build(BuildContext context) {
+    final widgetStateProvider2 =
+        Provider.of<WidgetStateProvider2>(context, listen: false);
     return Column(
       children: <Widget>[
         Padding(
@@ -292,51 +288,86 @@ class _SongMenuState extends State<SongMenu> {
                     ? _buildAddToPlaylistContainer(
                         MediaQuery.of(context).size.width, _song)
                     : SizedBox.shrink(),
-                Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    hoverColor: primaryTextColor.withOpacity(0.1),
-                    onTap: () {
-                      if (!mounted) return;
-                      setState(() {
-                        _isLiked = !_isLiked; // Toggle the value of _isLiked
-                        _onLikedChanged(_isLiked);
-                      });
-                    },
-                    child: Padding(
-                      padding: const EdgeInsets.only(
-                          left: 11, right: 8.0, top: 10.0, bottom: 10.0),
-                      child: SizedBox(
-                        width: double.infinity,
-                        child: Row(
-                          children: [
-                            Icon(
-                              _isLiked
-                                  ? Icons.favorite
-                                  : Icons.favorite_border_outlined,
-                              color:
-                                  _isLiked ? secondaryColor : primaryTextColor,
-                              size: 18,
-                            ),
-                            const SizedBox(width: 14),
-                            Expanded(
-                              child: Text(
-                                _isLiked
-                                    ? "Remove from your Liked Songs"
-                                    : "Save to your Liked Songs",
-                                style: const TextStyle(
-                                  color: primaryTextColor,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                                overflow: TextOverflow.ellipsis,
+                buildLikeButton(),
+                widget.pageName == 'PlaylistContainer'
+                    ? Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          hoverColor: primaryTextColor.withOpacity(0.1),
+                          onTap: () async {
+                            if (!mounted) return;
+
+                            try {
+                              // Get the playlist ID from context or widget
+                              final success = await DatabaseHelper.instance
+                                  .removeSongFromPlaylist(
+                                      widget.songId, widget.playlistId);
+
+                              if (success && mounted) {
+                                // Remove song from the provider's list
+                                Provider.of<SongListItemProvider>(context,
+                                        listen: false)
+                                    .removeSong(widget.songId);
+
+                                // Show success message
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Song removed from playlist'),
+                                    duration: Duration(seconds: 2),
+                                  ),
+                                );
+
+                                // Close the menu
+                                WidgetsBinding.instance
+                                    .addPostFrameCallback((_) {
+                                  if (mounted) {
+                                    widgetStateProvider2.changeWidget(
+                                        const ShowDetailSong(),
+                                        'ShowDetailSong');
+                                  }
+                                });
+                              }
+                            } catch (e) {
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text('Error removing song: $e'),
+                                    duration: const Duration(seconds: 2),
+                                  ),
+                                );
+                              }
+                            }
+                          },
+                          child: Padding(
+                            padding: const EdgeInsets.only(
+                                left: 11, right: 8.0, top: 10.0, bottom: 10.0),
+                            child: SizedBox(
+                              width: double.infinity,
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.delete,
+                                    color: primaryTextColor,
+                                    size: 18,
+                                  ),
+                                  const SizedBox(width: 14),
+                                  Expanded(
+                                    child: Text(
+                                      "Remove from your Playlist",
+                                      style: const TextStyle(
+                                        color: primaryTextColor,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
-                          ],
+                          ),
                         ),
-                      ),
-                    ),
-                  ),
-                ),
+                      )
+                    : SizedBox.shrink(),
                 const Padding(
                   padding: EdgeInsets.symmetric(horizontal: 8.0),
                   child: Divider(
@@ -458,6 +489,53 @@ class _SongMenuState extends State<SongMenu> {
     );
   }
 
+  // Update the like button widget
+  Widget buildLikeButton() {
+    return Consumer<LikeProvider>(
+      builder: (context, likeProvider, child) {
+        final isLiked = likeProvider.isLiked(widget.songId);
+
+        return Material(
+          color: Colors.transparent,
+          child: InkWell(
+            hoverColor: primaryTextColor.withOpacity(0.1),
+            onTap: () => _handleToggleLike(context),
+            child: Padding(
+              padding: const EdgeInsets.only(
+                  left: 11, right: 8.0, top: 10.0, bottom: 10.0),
+              child: SizedBox(
+                width: double.infinity,
+                child: Row(
+                  children: [
+                    Icon(
+                      isLiked ? Icons.favorite : Icons.favorite_border_outlined,
+                      color: isLiked ? secondaryColor : primaryTextColor,
+                      size: 18,
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Text(
+                        isLiked
+                            ? "Remove from your Liked Songs"
+                            : "Save to your Liked Songs",
+                        style: const TextStyle(
+                          color: primaryTextColor,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  // Modify _deleteSong in song_menu.dart
   Future<void> _deleteSong(String songId, String songUrl, String songImageUrl,
       int artistFileIndex) async {
     try {
@@ -471,7 +549,6 @@ class _SongMenuState extends State<SongMenu> {
       );
 
       if (songData.isEmpty) {
-        // Instead of throwing, show a user-friendly message and return
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Song has already been deleted or does not exist'),
@@ -518,6 +595,25 @@ class _SongMenuState extends State<SongMenu> {
       // Delete physical files after successful database updates
       await _deletePhysicalFiles(songUrl, songImageUrl);
 
+      // Update UI state through providers
+      if (mounted) {
+        // Update SongListItemProvider
+        Provider.of<SongListItemProvider>(context, listen: false)
+            .removeSong(songId);
+
+        // Update LikeProvider if needed
+        final likeProvider = Provider.of<LikeProvider>(context, listen: false);
+        if (likeProvider.isLiked(songId)) {
+          await likeProvider.fetchLikedSongs(); // Refresh liked songs
+        }
+
+        // Stop playback if the deleted song is currently playing
+        final songProvider = Provider.of<SongProvider>(context, listen: false);
+        if (songProvider.songId == songId) {
+          songProvider.stop();
+        }
+      }
+
       // Show success message
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -527,7 +623,6 @@ class _SongMenuState extends State<SongMenu> {
       );
     } catch (e) {
       print('Error during song deletion: $e');
-      // Show error message to user
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Failed to delete song: ${e.toString()}'),
@@ -866,48 +961,57 @@ Future<void> _renumberArtistSongs(
   }
 }
 
-Future<void> _deleteFile(String filePath) async {
-  if (filePath.isEmpty) return;
-
-  try {
-    final file = File(filePath);
-    if (await file.exists()) {
-      await file.delete();
-      print('Successfully deleted file: $filePath');
-    }
-  } catch (e) {
-    print('Error deleting file $filePath: $e');
-    // Don't rethrow - we want to continue even if file deletion fails
-  }
-}
 // Helper function to add song to playlist
 Future<void> _addSongToPlaylist(
   Map<String, dynamic> playlist,
   Song song,
 ) async {
-  final updatedSongList = List<String>.from(playlist['songListIds'] ?? []);
-  updatedSongList.add(song.songId);
+  try {
+    // Get the current playlist from database to ensure we have the latest data
+    final currentPlaylist =
+        await DatabaseHelper.instance.getPlaylistById(playlist['playlistId']);
 
-  final newTotalDuration = (playlist['totalDuration'] as Duration) + song.songDuration;
+    if (currentPlaylist == null) {
+      throw Exception('Playlist not found');
+    }
 
-  final updatedPlaylist = Playlist(
-    playlistId: playlist['playlistId'],
-    creatorId: playlist['creatorId'],
-    playlistName: playlist['playlistName'],
-    playlistDescription: playlist['playlistDescription'],
-    playlistImageUrl: playlist['playlistImageUrl'],
-    timestamp: playlist['timestamp'],
-    playlistUserIndex: playlist['playlistUserIndex'],
-    songListIds: updatedSongList,
-    totalDuration: newTotalDuration,
-  );
+    // Create a new list from existing songListIds
+    final List<String> updatedSongList =
+        List<String>.from(currentPlaylist.songListIds ?? []);
 
-  await DatabaseHelper.instance.updatePlaylist(updatedPlaylist);
+    // Check if song is already in playlist
+    if (!updatedSongList.contains(song.songId)) {
+      updatedSongList.add(song.songId);
 
-  // Update song's playlist IDs
-  final updatedPlaylistIds = List<String>.from(song.playlistIds ?? []);
-  updatedPlaylistIds.add(playlist['playlistId']);
+      final newTotalDuration =
+          currentPlaylist.totalDuration + song.songDuration;
 
-  final updatedSong = song.copyWith(playlistIds: updatedPlaylistIds);
-  await DatabaseHelper.instance.updateSong(updatedSong);
+      final updatedPlaylist = Playlist(
+        playlistId: currentPlaylist.playlistId,
+        creatorId: currentPlaylist.creatorId,
+        playlistName: currentPlaylist.playlistName,
+        playlistDescription: currentPlaylist.playlistDescription,
+        playlistImageUrl: currentPlaylist.playlistImageUrl,
+        timestamp: currentPlaylist.timestamp,
+        playlistUserIndex: currentPlaylist.playlistUserIndex,
+        songListIds: updatedSongList,
+        playlistLikeIds: currentPlaylist.playlistLikeIds,
+        totalDuration: newTotalDuration,
+      );
+
+      // Update the playlist in database
+      await DatabaseHelper.instance.updatePlaylist(updatedPlaylist);
+
+      // Update song's playlist IDs
+      final updatedPlaylistIds = List<String>.from(song.playlistIds ?? []);
+      if (!updatedPlaylistIds.contains(playlist['playlistId'])) {
+        updatedPlaylistIds.add(playlist['playlistId']);
+        final updatedSong = song.copyWith(playlistIds: updatedPlaylistIds);
+        await DatabaseHelper.instance.updateSong(updatedSong);
+      }
+    }
+  } catch (e) {
+    print('Error adding song to playlist: $e');
+    throw e;
+  }
 }

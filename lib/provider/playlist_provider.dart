@@ -270,7 +270,6 @@ class PlaylistProvider with ChangeNotifier {
     }
   }
 
-
   void resetPlaylistId() {
     _playlistId = '';
     notifyListeners();
@@ -315,9 +314,9 @@ class PlaylistProvider with ChangeNotifier {
   }
 
   // New method to submit and save a new playlist
+  // In PlaylistProvider class
   Future<void> submitNewPlaylist(BuildContext context) async {
     try {
-      // Get the current user from SQLite
       final user = await DatabaseHelper.instance.getCurrentUser();
 
       if (user == null) {
@@ -329,7 +328,6 @@ class PlaylistProvider with ChangeNotifier {
         return;
       }
 
-      // Get the SQLite instance
       final db = await DatabaseHelper.instance.database;
 
       // Calculate `playlistUserIndex` based on existing playlists
@@ -343,7 +341,7 @@ class PlaylistProvider with ChangeNotifier {
       // Generate a new playlist ID
       final playlistId = Uuid().v4();
 
-      // Create a new playlist object
+      // Create a new playlist object with empty songListIds array
       final newPlaylist = Playlist(
         playlistId: playlistId,
         creatorId: user.userId,
@@ -352,7 +350,7 @@ class PlaylistProvider with ChangeNotifier {
         playlistImageUrl: "",
         timestamp: DateTime.now(),
         playlistUserIndex: playlistUserIndex,
-        songListIds: [],
+        songListIds: [], // Initialize as empty array
         playlistLikeIds: [],
         totalDuration: Duration.zero,
       );
@@ -360,10 +358,9 @@ class PlaylistProvider with ChangeNotifier {
       // Insert the playlist into the database
       await DatabaseHelper.instance.insertPlaylist(newPlaylist);
 
-      // Update the provider's display playlists and notify listeners
+      // Update the provider's display playlists
       await fetchPlaylists();
 
-      // Show a success message
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Playlist berhasil ditambahkan!')),
       );
@@ -374,7 +371,7 @@ class PlaylistProvider with ChangeNotifier {
       );
     }
   }
-  
+
   // Delete a specific playlist by id and update the display list
   Future<void> deletePlaylistById(String playlistId) async {
     try {

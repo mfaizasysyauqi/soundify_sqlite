@@ -4,6 +4,8 @@ import 'package:soundify/database/file_storage_helper.dart';
 import 'package:soundify/models/user.dart';
 
 class SongProvider with ChangeNotifier {
+  final DatabaseHelper _databaseHelper = DatabaseHelper.instance;
+
   String _songId = '';
   String _senderId = '';
   String _artistId = '';
@@ -16,12 +18,8 @@ class SongProvider with ChangeNotifier {
   Duration _songDuration = Duration.zero;
   bool _isPlaying = false;
   bool _shouldPlay = false;
-
-  int index = 0; // Index of the song in a list
-
-  final DatabaseHelper _databaseHelper = DatabaseHelper.instance;
-
-  String userBio = '';
+  int _index = 0; // Index of the song in a list
+  String _userBio = ''; // Change to private variable
 
   // Getters
   String get songId => _songId;
@@ -36,6 +34,8 @@ class SongProvider with ChangeNotifier {
   Duration get songDuration => _songDuration;
   bool get isPlaying => _isPlaying;
   bool get shouldPlay => _shouldPlay;
+  int get index => _index;
+  String get userBio => _userBio; // Add getter
 
   // Set song details and play
   void setSong(
@@ -50,6 +50,7 @@ class SongProvider with ChangeNotifier {
     String songUrl,
     Duration songDuration,
     int songIndex,
+    String userBio,
   ) async {
     if (_songId != songId) {
       stop();
@@ -64,8 +65,8 @@ class SongProvider with ChangeNotifier {
       _songUrl = songUrl;
       _songDuration = songDuration;
       _isPlaying = true;
-      index = songIndex;
-
+      _index = songIndex;
+      _userBio = userBio;
       fetchUserBio(); // Fetch bio in the background
       notifyListeners();
     }
@@ -87,17 +88,18 @@ class SongProvider with ChangeNotifier {
   }
 
   // Fetch user bio from SQLite
+  // Modify fetchUserBio method
   Future<void> fetchUserBio() async {
-    if (userBio.isEmpty) {
-      try {
-        User? user = await _databaseHelper.getUserById(_artistId);
-        if (user != null) {
-          userBio = user.bio;
-          notifyListeners();
-        }
-      } catch (e) {
-        print("Error fetching user bio: $e");
+    try {
+      User? user = await DatabaseHelper.instance.getUserById(_artistId);
+      if (user != null) {
+        _userBio = user.bio;
+        notifyListeners();
       }
+    } catch (e) {
+      print("Error fetching user bio: $e");
+      _userBio = ''; // Reset bio on error
+      notifyListeners();
     }
   }
 

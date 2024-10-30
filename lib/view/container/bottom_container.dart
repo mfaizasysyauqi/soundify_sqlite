@@ -7,10 +7,12 @@ import 'package:provider/provider.dart';
 import 'package:soundify/database/database_helper.dart';
 import 'package:soundify/models/song.dart';
 import 'package:soundify/models/user.dart';
+import 'package:soundify/provider/song_list_item_provider.dart';
 import 'package:soundify/provider/song_provider.dart';
 import 'package:soundify/view/style/style.dart';
 import 'package:audioplayers/audioplayers.dart';
 
+// bottom_container.dart
 class BottomContainer extends StatefulWidget {
   const BottomContainer({super.key});
 
@@ -36,7 +38,12 @@ class _BottomContainerState extends State<BottomContainer> {
   void initState() {
     super.initState();
     _initializeAudioPlayer();
-    _loadUserPreferences();
+    // Jalankan _loadUserPreferences secara terpisah
+    _loadUserPreferences().then((_) {
+      if (mounted) {
+        setState(() {}); // Update UI jika perlu setelah preferences dimuat
+      }
+    });
     _loadPlaylist();
   }
 
@@ -143,19 +150,27 @@ class _BottomContainerState extends State<BottomContainer> {
 
     if (prefs.containsKey('lastVolumeLevel')) {
       var lastVolumeLevel = prefs['lastVolumeLevel'];
+      double volume;
 
-      // Determine volume level without calling setState
-      double newVolume = lastVolumeLevel is double
-          ? lastVolumeLevel
-          : (lastVolumeLevel as int).toDouble();
+      if (lastVolumeLevel is double) {
+        volume = lastVolumeLevel;
+      } else if (lastVolumeLevel is int) {
+        volume = lastVolumeLevel.toDouble();
+      } else {
+        volume = 0.5; // default value
+      }
 
-      // Update volume in _audioPlayer asynchronously
-      await _audioPlayer.setVolume(newVolume);
+      // Set volume tanpa menggunakan setState
+      _currentVolume = volume;
+      await _audioPlayer.setVolume(volume);
 
-      // Update the UI with the new volume level synchronously
-      setState(() {
-        _currentVolume = newVolume;
-      });
+      // Update UI jika perlu
+      if (mounted) {
+        setState(() {
+          // Tidak ada operasi async di sini
+          _currentVolume = volume;
+        });
+      }
     }
   }
 
@@ -353,19 +368,25 @@ class _BottomContainerState extends State<BottomContainer> {
 
   Future<void> _skipToNextSong() async {
     final songProvider = Provider.of<SongProvider>(context, listen: false);
+    final songListProvider =
+        Provider.of<SongListItemProvider>(context, listen: false);
     final dbHelper = DatabaseHelper.instance;
 
-    // Use shuffled playlist if shuffle mode is on, otherwise use original playlist
+    // Get the current playlist and preserve the clicked index
     List<Song> currentPlaylist =
-        _isShuffleMode ? _shuffledPlaylist : await dbHelper.getSongs();
+        _isShuffleMode ? _shuffledPlaylist : songListProvider.songs;
+
+    if (currentPlaylist.isEmpty) {
+      currentPlaylist = await dbHelper.getSongs();
+    }
 
     // Get current song index
-    int currentIndex =
-        currentPlaylist.indexWhere((song) => song.songUrl == _currentSongUrl);
+    int currentIndex = songProvider.index; // Use the stored index
+
     // Calculate next index
     int nextIndex = currentIndex + 1;
     if (nextIndex >= currentPlaylist.length) {
-      nextIndex = 0; // Loop back to the first song
+      nextIndex = 0;
     }
 
     if (currentPlaylist.isNotEmpty && nextIndex < currentPlaylist.length) {
@@ -384,7 +405,11 @@ class _BottomContainerState extends State<BottomContainer> {
         nextSong.songUrl,
         nextSong.songDuration,
         nextIndex,
+        nextSong.bio ?? '',
       );
+
+      // Update clicked index in song list provider
+      songListProvider.setClickedIndex(nextIndex);
 
       // Save last listened song to current user
       User? currentUser = await dbHelper.getCurrentUser();
@@ -397,27 +422,28 @@ class _BottomContainerState extends State<BottomContainer> {
 
   Future<void> _skipToPreviousSong() async {
     final songProvider = Provider.of<SongProvider>(context, listen: false);
+    final songListProvider =
+        Provider.of<SongListItemProvider>(context, listen: false);
     final dbHelper = DatabaseHelper.instance;
 
-    // Use shuffled playlist if shuffle mode is on, otherwise use original playlist
     List<Song> currentPlaylist =
-        _isShuffleMode ? _shuffledPlaylist : await dbHelper.getSongs();
+        _isShuffleMode ? _shuffledPlaylist : songListProvider.songs;
+
+    if (currentPlaylist.isEmpty) {
+      currentPlaylist = await dbHelper.getSongs();
+    }
 
     // Get current song index
-    int currentIndex =
-        currentPlaylist.indexWhere((song) => song.songUrl == _currentSongUrl);
-
-    // Get current song index
-    List<Song> songs = await dbHelper.getSongs();
+    int currentIndex = songProvider.index; // Use the stored index
 
     // Calculate previous index
     int previousIndex = currentIndex - 1;
     if (previousIndex < 0) {
-      previousIndex = songs.length - 1; // Loop to last song
+      previousIndex = currentPlaylist.length - 1;
     }
 
-    if (songs.isNotEmpty && previousIndex < songs.length) {
-      Song previousSong = songs[previousIndex];
+    if (currentPlaylist.isNotEmpty && previousIndex < currentPlaylist.length) {
+      Song previousSong = currentPlaylist[previousIndex];
 
       // Update the song provider with new song details
       songProvider.setSong(
@@ -431,8 +457,12 @@ class _BottomContainerState extends State<BottomContainer> {
         previousSong.artistName,
         previousSong.songUrl,
         previousSong.songDuration,
-        previousIndex,
+        previousIndex, // Pass the new index
+        previousSong.bio ?? '',
       );
+
+      // Update clicked index in song list provider
+      songListProvider.setClickedIndex(previousIndex);
 
       // Save last listened song to current user
       User? currentUser = await dbHelper.getCurrentUser();

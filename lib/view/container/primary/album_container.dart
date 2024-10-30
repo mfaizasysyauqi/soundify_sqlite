@@ -25,7 +25,6 @@ class AlbumContainer extends StatefulWidget {
   State<AlbumContainer> createState() => _AlbumContainerState();
 }
 
-bool showModal = false;
 OverlayEntry? _overlayEntry;
 Uint8List? _selectedImage;
 
@@ -323,7 +322,7 @@ class _AlbumContainerState extends State<AlbumContainer> {
                   text: TextSpan(
                     text: albumProvider.albumDescription,
                     style: TextStyle(
-                      color: senaryColor, // quaternaryTextColor
+                      color: quaternaryTextColor, // quaternaryTextColor
                       fontWeight: mediumWeight,
                       fontSize: isMediumScreen ? 14 : 12, // smallFontSize
                     ),

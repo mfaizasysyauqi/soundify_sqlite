@@ -20,6 +20,7 @@ import 'package:path_provider/path_provider.dart';
 import 'dart:io';
 import 'package:path/path.dart' as path;
 import 'package:audioplayers/audioplayers.dart';
+import 'package:uuid/uuid.dart';
 
 class AddSongContainer extends StatefulWidget {
   final Function(Widget) onChangeWidget;
@@ -47,11 +48,12 @@ class _AddSongContainerState extends State<AddSongContainer> {
   Duration? songDuration;
   int? songDurationS;
 
- final TextEditingController _songFileNameController = TextEditingController();
- final TextEditingController _songImageFileNameController = TextEditingController();
- final TextEditingController _songTitleController = TextEditingController();
- final TextEditingController _albumIdController = TextEditingController();
- final TextEditingController _artistIdController = TextEditingController();
+  final TextEditingController _songFileNameController = TextEditingController();
+  final TextEditingController _songImageFileNameController =
+      TextEditingController();
+  final TextEditingController _songTitleController = TextEditingController();
+  final TextEditingController _albumIdController = TextEditingController();
+  final TextEditingController _artistIdController = TextEditingController();
 
   String? senderId;
 
@@ -77,22 +79,28 @@ class _AddSongContainerState extends State<AddSongContainer> {
     try {
       _audioPlayer = AudioPlayer();
       _audioPlayer.onPlayerStateChanged.listen((state) {
-        setState(() {
-          _isPlaying = state == PlayerState.playing;
-        });
+        if (mounted) {
+          setState(() {
+            _isPlaying = state == PlayerState.playing;
+          });
+        }
       });
 
       _audioPlayer.onDurationChanged.listen((duration) {
-        setState(() {
-          songDuration = duration;
-          songDurationS = duration.inSeconds;
-        });
+        if (mounted) {
+          setState(() {
+            songDuration = duration;
+            songDurationS = duration.inSeconds;
+          });
+        }
       });
 
       _audioPlayer.onPositionChanged.listen((position) {
-        setState(() {
-          currentPosition = position;
-        });
+        if (mounted) {
+          setState(() {
+            currentPosition = position;
+          });
+        }
       });
     } catch (e) {
       print("Error initializing audioplayer: $e");
@@ -248,6 +256,9 @@ class _AddSongContainerState extends State<AddSongContainer> {
       String savedImagePath =
           await _saveFile(_imagePath!, 'song_images', 'song_image');
 
+      // Generate unique song ID
+      String songId = Uuid().v4();
+
       // Get the appropriate artistFileIndex
       List<Song> existingSongs = await DatabaseHelper.instance.getSongs();
       int artistFileIndex = existingSongs
@@ -257,7 +268,7 @@ class _AddSongContainerState extends State<AddSongContainer> {
 
       // Create new Song object
       Song newSong = Song(
-        songId: DateTime.now().millisecondsSinceEpoch.toString(),
+        songId: songId,
         senderId: senderId!,
         artistId: _artistIdController.text,
         songTitle: _songTitleController.text,
@@ -276,33 +287,39 @@ class _AddSongContainerState extends State<AddSongContainer> {
       // Insert song into database
       await DatabaseHelper.instance.insertSong(newSong);
 
-      // Update album
-      Album? album = await DatabaseHelper.instance
-          .getAlbumByCreatorId(_albumIdController.text);
+      // Update album with the new song
+      Album? album =
+          await DatabaseHelper.instance.getAlbumById(_albumIdController.text);
       if (album != null) {
-        album.songListIds?.add(newSong.songId);
-        album.totalDuration =
-            Duration(seconds: album.totalDuration.inSeconds + songDurationS!);
-        await DatabaseHelper.instance.updateAlbum(album);
+        // Create a new map for the album update
+        Map<String, dynamic> updateData = {
+          'albumId': album.albumId,
+          'songListIds': album.songListIds != null
+              ? [...album.songListIds!, songId].join(',')
+              : songId,
+          'totalDuration': album.totalDuration.inSeconds + songDurationS!
+        };
+
+        // Update the album using the updateData map
+        await DatabaseHelper.instance
+            .update('albums', updateData, 'albumId = ?', [album.albumId]);
       }
 
       // Update songs.json
       await _updateSongsJson(newSong);
 
-      // Reset form and state after successful submission
+      // Reset form and show success message
       _resetForm();
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content:
-                Text('Song data successfully submitted and added to album')),
+        const SnackBar(content: Text('Song successfully added to album')),
       );
 
       // Reset providers
       Provider.of<SongProvider>(context, listen: false).resetArtistId();
       Provider.of<AlbumProvider>(context, listen: false).resetAlbumId();
 
-      // Change widget to show detail song
+      // Navigate back to song detail view
       Provider.of<WidgetStateProvider2>(context, listen: false)
           .changeWidget(const ShowDetailSong(), 'ShowDetailSong');
     } catch (e) {
@@ -376,12 +393,16 @@ class _AddSongContainerState extends State<AddSongContainer> {
     }
   }
 
-  void _resetForm() {
-    _songFileNameController.clear();
-    _songImageFileNameController.clear();
-    _songTitleController.clear();
-    _artistIdController.clear();
-    _albumIdController.clear();
+// Add this method for cleaning up before navigation
+  void cleanupBeforeNavigation() {
+    if (!mounted) return;
+
+    // Stop audio if playing
+    if (_audioPlayer.state == PlayerState.playing) {
+      _audioPlayer.stop();
+    }
+
+    // Reset state variables without touching controllers
     setState(() {
       _imagePath = null;
       _songPath = null;
@@ -390,18 +411,48 @@ class _AddSongContainerState extends State<AddSongContainer> {
     });
   }
 
+// Update _resetForm to use mounted check
+  void _resetForm() {
+    if (!mounted) return;
+
+    setState(() {
+      try {
+        // Clear text controllers if the widget is still mounted
+        _songFileNameController.text = '';
+        _songImageFileNameController.text = '';
+        _songTitleController.text = '';
+        _artistIdController.text = '';
+        _albumIdController.text = '';
+
+        // Reset state variables
+        _imagePath = null;
+        _songPath = null;
+        _isSongSelected = false;
+        _isImageSelected = false;
+      } catch (e) {
+        // Handle any errors that might occur if controllers are already disposed
+        print('Error resetting form: $e');
+      }
+    });
+  }
+
   @override
   void dispose() {
-    // if (_audioPlayer.playing) {
-    //   _audioPlayer.stop();
-    // }
+    // First stop the audio player if it's playing
+    if (_audioPlayer.state == PlayerState.playing) {
+      _audioPlayer.stop();
+    }
+
+    // Dispose audio player
     _audioPlayer.dispose();
+
+    // Dispose all controllers
     _songTitleController.dispose();
     _artistIdController.dispose();
     _albumIdController.dispose();
     _songFileNameController.dispose();
     _songImageFileNameController.dispose();
-    _resetForm();
+
     super.dispose();
   }
 

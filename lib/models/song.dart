@@ -21,7 +21,8 @@ class Song {
   String? albumName;
   String? profileImageUrl;
   String? bioImageUrl;
-
+  String? bio;
+  
   Song({
     required this.songId,
     required this.senderId,

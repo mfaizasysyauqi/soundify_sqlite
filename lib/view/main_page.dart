@@ -1,7 +1,9 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:soundify/database/database_helper.dart';
 import 'package:soundify/provider/playlist_provider.dart';
+import 'package:soundify/provider/profile_provider.dart';
 import 'package:soundify/provider/widget_size_provider.dart';
 import 'package:soundify/provider/widget_state_provider_1.dart';
 import 'package:soundify/provider/widget_state_provider_2.dart';
@@ -9,6 +11,7 @@ import 'package:soundify/view/container/bottom_container.dart';
 import 'package:soundify/view/container/primary/add_song_container.dart';
 import 'package:soundify/view/container/primary/home_container.dart';
 import 'package:soundify/view/container/primary/liked_song_container.dart';
+import 'package:soundify/view/container/primary/personal_profile_container.dart';
 import 'package:soundify/view/container/primary/playlist_container.dart';
 import 'package:soundify/view/container/secondary/show_detail_song.dart';
 import 'package:soundify/view/splash_screen.dart';
@@ -39,11 +42,13 @@ final DatabaseHelper _databaseHelper = DatabaseHelper.instance;
 
 class _MainPageState extends State<MainPage> {
   bool _isHoveredSearch = false;
+  String? _currentUserId;
 
   @override
   void initState() {
     super.initState();
-    // _getUserId(); // Dapatkan userId saat widget diinisialisasi
+    _loadCurrentUser();
+
     // Panggil fetchPlaylists saat halaman diinisialisasi
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Provider.of<PlaylistProvider>(context, listen: false).fetchPlaylists();
@@ -70,6 +75,20 @@ class _MainPageState extends State<MainPage> {
         activeWidget2 = const ShowDetailSong();
         isSearch = true;
       });
+    }
+  }
+
+  // Method untuk memuat current user dari SQLite
+  Future<void> _loadCurrentUser() async {
+    try {
+      final user = await DatabaseHelper.instance.getCurrentUser();
+      if (user != null) {
+        setState(() {
+          _currentUserId = user.userId;
+        });
+      }
+    } catch (e) {
+      print('Error loading current user: $e');
     }
   }
 
@@ -265,668 +284,698 @@ class _MainPageState extends State<MainPage> {
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: Scaffold(
-        backgroundColor: secondaryTextColor,
-        body: Column(
-          children: [
-            Expanded(
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Center(
-                    child: Padding(
-                      padding: const EdgeInsets.only(left: 12.0),
-                      child: Column(
-                        children: [
-                          Padding(
-                            padding:
-                                const EdgeInsets.only(top: 10.0, bottom: 18.0),
-                            child: TextButton(
-                              onPressed: () {
-                                setState(
-                                  () {
-                                    Provider.of<WidgetStateProvider1>(context,
-                                            listen: false)
-                                        .changeWidget(
-                                      const HomeContainer(),
-                                      'Home Container',
-                                    );
+    return Consumer<ProfileProvider>(
+      builder: (context, profileProvider, child) {
+        return SafeArea(
+          child: Scaffold(
+            backgroundColor: secondaryTextColor,
+            body: Column(
+              children: [
+                Expanded(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Center(
+                        child: Padding(
+                          padding: const EdgeInsets.only(left: 12.0),
+                          child: Column(
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.only(
+                                    top: 10.0, bottom: 18.0),
+                                child: TextButton(
+                                  onPressed: () {
+                                    setState(
+                                      () {
+                                        Provider.of<WidgetStateProvider1>(
+                                                context,
+                                                listen: false)
+                                            .changeWidget(
+                                          const HomeContainer(),
+                                          'Home Container',
+                                        );
 
-                                    activeWidget2 = const ShowDetailSong();
+                                        activeWidget2 = const ShowDetailSong();
+                                      },
+                                    );
                                   },
-                                );
-                              },
-                              child: const Text(
-                                "Soundify",
-                                style: TextStyle(
-                                  color: secondaryColor,
-                                  fontSize: 30,
-                                  fontWeight: FontWeight.bold,
+                                  child: const Text(
+                                    "Soundify",
+                                    style: TextStyle(
+                                      color: secondaryColor,
+                                      fontSize: 30,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
                                 ),
                               ),
-                            ),
-                          ),
-                          Expanded(
-                            child: Padding(
-                              padding: const EdgeInsets.only(bottom: 10.0),
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  color: primaryColor,
-                                  borderRadius: BorderRadius.circular(
-                                      20), // Sudut melengkung
-                                ),
-                                width: 155,
+                              Expanded(
                                 child: Padding(
-                                  padding:
-                                      const EdgeInsets.symmetric(vertical: 2.0),
-                                  child: Column(
-                                    children: [
-                                      Padding(
-                                        padding: const EdgeInsets.only(
-                                            left: 12.0,
-                                            right: 12.0,
-                                            top: 10,
-                                            bottom: 3.0),
-                                        child: Row(
-                                          children: [
-                                            InkWell(
-                                              onTap: () {
-                                                setState(() {
-                                                  showModal =
-                                                      true; // Menampilkan modal container
-                                                });
-                                                _showModal(
-                                                    context); // Pastikan fungsi dipanggil
-                                              },
-                                              child: const Text(
-                                                'Menu',
-                                                style: TextStyle(
-                                                  color: primaryTextColor,
-                                                  fontWeight: FontWeight.bold,
-                                                ),
-                                              ),
-                                            ),
-                                            const Spacer(),
-                                            InkWell(
-                                              onTap: () {
-                                                setState(() {
-                                                  showModal =
-                                                      true; // Menampilkan modal container
-                                                });
-                                                _showModal(
-                                                    context); // Pastikan fungsi dipanggil
-                                              },
-                                              child: const Icon(
-                                                Icons.add,
-                                                color: primaryTextColor,
-                                                size: 20,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                      const Padding(
-                                        padding: EdgeInsets.symmetric(
-                                            horizontal: 8.0),
-                                        child: Divider(
-                                          color: primaryTextColor,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Expanded(
-                                        child: Container(
-                                          child: SingleChildScrollView(
-                                            child: Column(
+                                  padding: const EdgeInsets.only(bottom: 10.0),
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      color: primaryColor,
+                                      borderRadius: BorderRadius.circular(
+                                          20), // Sudut melengkung
+                                    ),
+                                    width: 155,
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                          vertical: 2.0),
+                                      child: Column(
+                                        children: [
+                                          Padding(
+                                            padding: const EdgeInsets.only(
+                                                left: 12.0,
+                                                right: 12.0,
+                                                top: 10,
+                                                bottom: 3.0),
+                                            child: Row(
                                               children: [
-                                                Padding(
-                                                  padding: const EdgeInsets
-                                                      .symmetric(
-                                                      horizontal: 8.0),
-                                                  child: GestureDetector(
-                                                    onTap: () {
-                                                      setState(
-                                                        () {
-                                                          Provider.of<WidgetStateProvider1>(
-                                                                  context,
-                                                                  listen: false)
-                                                              .changeWidget(
-                                                            const LikedSongContainer(),
-                                                            'Liked Song Container',
-                                                          );
-
-                                                          activeWidget2 =
-                                                              const ShowDetailSong();
-                                                        },
-                                                      );
-                                                    },
-                                                    child: Container(
-                                                      height: 40,
-                                                      color: primaryColor,
-                                                      child: Row(
-                                                        children: [
-                                                          ClipRRect(
-                                                            borderRadius:
-                                                                BorderRadius
-                                                                    .circular(
-                                                                        4),
-                                                            child: Container(
-                                                              width: 35,
-                                                              height: 35,
-                                                              color:
-                                                                  secondaryColor,
-                                                              child: Icon(
-                                                                Icons.favorite,
-                                                                color:
-                                                                    primaryColor,
-                                                              ),
-                                                            ),
-                                                          ),
-                                                          const SizedBox(
-                                                              width: 12),
-                                                          const Text(
-                                                            'Liked Songs',
-                                                            style: TextStyle(
-                                                              color:
-                                                                  primaryTextColor,
-                                                              fontSize:
-                                                                  smallFontSize,
-                                                              fontWeight:
-                                                                  FontWeight
-                                                                      .bold,
-                                                            ),
-                                                          ),
-                                                        ],
-                                                      ),
+                                                InkWell(
+                                                  onTap: () {
+                                                    setState(() {
+                                                      showModal =
+                                                          true; // Menampilkan modal container
+                                                    });
+                                                    _showModal(
+                                                        context); // Pastikan fungsi dipanggil
+                                                  },
+                                                  child: const Text(
+                                                    'Menu',
+                                                    style: TextStyle(
+                                                      color: primaryTextColor,
+                                                      fontWeight:
+                                                          FontWeight.bold,
                                                     ),
                                                   ),
                                                 ),
-                                                Padding(
-                                                  padding: const EdgeInsets
-                                                      .symmetric(
-                                                      horizontal: 8.0),
-                                                  child: Consumer<
-                                                      PlaylistProvider>(
-                                                    builder: (context,
-                                                        playlistProvider,
-                                                        child) {
-                                                      // if (playlistProvider
-                                                      //     .isFetching) {
-                                                      //   return const Center(
-                                                      //     child:
-                                                      //         CircularProgressIndicator(
-                                                      //       color:
-                                                      //           primaryTextColor,
-                                                      //     ),
-                                                      //   );
-                                                      // }
-
-                                                      if (playlistProvider
-                                                          .hasError) {
-                                                        return Center(
-                                                          child: Column(
-                                                            mainAxisAlignment:
-                                                                MainAxisAlignment
-                                                                    .center,
-                                                            children: [
-                                                              Text(
-                                                                  'Failed to load playlists'),
-                                                              ElevatedButton(
-                                                                onPressed: () {
-                                                                  Provider.of<PlaylistProvider>(
-                                                                          context,
-                                                                          listen:
-                                                                              false)
-                                                                      .fetchPlaylists();
-                                                                },
-                                                                child: Text(
-                                                                    'Retry'),
-                                                              ),
-                                                            ],
-                                                          ),
-                                                        );
-                                                      }
-
-                                                      if (playlistProvider
-                                                          .displayPlaylists
-                                                          .isEmpty) {
-                                                        return const Center(
-                                                          child: Text(
-                                                              'No playlists found'),
-                                                        );
-                                                      }
-
-                                                      return ListView.builder(
-                                                        shrinkWrap: true,
-                                                        physics:
-                                                            const NeverScrollableScrollPhysics(),
-                                                        itemCount:
-                                                            playlistProvider
-                                                                .displayPlaylists
-                                                                .length,
-                                                        itemBuilder:
-                                                            (context, index) {
-                                                          final playlist =
-                                                              playlistProvider
-                                                                      .displayPlaylists[
-                                                                  index];
-
-                                                          return GestureDetector(
-                                                            onTap: () {
-                                                              // Perbarui cara akses data playlist
-                                                              Provider.of<PlaylistProvider>(
-                                                                      context,
-                                                                      listen:
-                                                                          false)
-                                                                  .updatePlaylistProvider(
-                                                                playlist[
-                                                                        'playlistId']
-                                                                    as String,
-                                                                playlist[
-                                                                        'creatorId']
-                                                                    as String,
-                                                                playlist[
-                                                                        'playlistName']
-                                                                    as String,
-                                                                playlist[
-                                                                        'playlistDescription']
-                                                                    as String?,
-                                                                playlist[
-                                                                        'playlistImageUrl']
-                                                                    as String?,
-                                                                playlist[
-                                                                        'timestamp']
-                                                                    as DateTime,
-                                                                playlist[
-                                                                        'playlistUserIndex']
-                                                                    as int,
-                                                                (playlist['songListIds']
-                                                                        as List)
-                                                                    .cast<
-                                                                        String>(),
-                                                                (playlist['playlistLikeIds']
-                                                                        as List)
-                                                                    .cast<
-                                                                        String>(),
-                                                                playlist[
-                                                                        'totalDuration']
-                                                                    as Duration,
-                                                              );
-
+                                                const Spacer(),
+                                                InkWell(
+                                                  onTap: () {
+                                                    setState(() {
+                                                      showModal =
+                                                          true; // Menampilkan modal container
+                                                    });
+                                                    _showModal(
+                                                        context); // Pastikan fungsi dipanggil
+                                                  },
+                                                  child: const Icon(
+                                                    Icons.add,
+                                                    color: primaryTextColor,
+                                                    size: 20,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                          const Padding(
+                                            padding: EdgeInsets.symmetric(
+                                                horizontal: 8.0),
+                                            child: Divider(
+                                              color: primaryTextColor,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Expanded(
+                                            child: Container(
+                                              child: SingleChildScrollView(
+                                                child: Column(
+                                                  children: [
+                                                    Padding(
+                                                      padding: const EdgeInsets
+                                                          .symmetric(
+                                                          horizontal: 8.0),
+                                                      child: GestureDetector(
+                                                        onTap: () {
+                                                          setState(
+                                                            () {
                                                               Provider.of<WidgetStateProvider1>(
                                                                       context,
                                                                       listen:
                                                                           false)
                                                                   .changeWidget(
-                                                                PlaylistContainer(
-                                                                  playlistId: playlist[
-                                                                          'playlistId']
-                                                                      as String,
-                                                                ),
-                                                                'PlaylistContainer',
+                                                                const LikedSongContainer(),
+                                                                'Liked Song Container',
                                                               );
+
+                                                              activeWidget2 =
+                                                                  const ShowDetailSong();
                                                             },
-                                                            child: PlayList(
-                                                              playlistImageUrl:
-                                                                  playlist[
-                                                                          'playlistImageUrl']
-                                                                      as String,
-                                                              playlistName:
-                                                                  playlist[
-                                                                          'playlistName']
-                                                                      as String,
-                                                              creatorName: playlist[
-                                                                      'creatorName']
-                                                                  as String,
-                                                            ),
                                                           );
                                                         },
-                                                      );
-                                                    },
-                                                  ),
-                                                )
-                                              ],
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                      const SizedBox(height: 10),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: Column(
-                        children: [
-                          Row(
-                            children: [
-                              Expanded(
-                                child: MouseRegion(
-                                  onEnter: (event) => setState(() {
-                                    _isHoveredSearch = true;
-                                  }),
-                                  onExit: (event) => setState(() {
-                                    _isHoveredSearch = false;
-                                  }),
-                                  child: TextFormField(
-                                    controller: searchListController,
-                                    style: const TextStyle(
-                                        color: primaryTextColor),
-                                    decoration: InputDecoration(
-                                      contentPadding: const EdgeInsets.all(8),
-                                      prefixIcon: const Padding(
-                                        padding: EdgeInsets.only(
-                                            left: 12.0, right: 8.0),
-                                        child: Icon(Icons.search,
-                                            color: primaryTextColor),
-                                      ),
-                                      hintText: 'What do you want to play?',
-                                      hintStyle: const TextStyle(
-                                          color: primaryTextColor),
-                                      border: const OutlineInputBorder(
-                                        borderRadius: BorderRadius.all(
-                                            Radius.circular(30)),
-                                        borderSide:
-                                            BorderSide(color: secondaryColor),
-                                      ),
-                                      focusedBorder: const OutlineInputBorder(
-                                        borderRadius: BorderRadius.all(
-                                            Radius.circular(30)),
-                                        borderSide:
-                                            BorderSide(color: secondaryColor),
-                                      ),
-                                      enabledBorder: OutlineInputBorder(
-                                        borderRadius: const BorderRadius.all(
-                                            Radius.circular(30)),
-                                        borderSide: BorderSide(
-                                          color: _isHoveredSearch
-                                              ? secondaryColor
-                                              : primaryTextColor,
-                                        ),
-                                      ),
-                                    ),
-                                    onTap: navigateToHomeContainer,
-                                    onChanged: (value) {
-                                      // Ensure we're on the search list when typing
-                                      navigateToHomeContainer();
-                                    },
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              CircleAvatar(
-                                backgroundColor:
-                                    primaryTextColor, // Warna latar belakang
-                                child: IconButton(
-                                  onPressed: () {
-                                    setState(() {
-                                      Provider.of<WidgetStateProvider1>(context,
-                                              listen: false)
-                                          .changeWidget(
-                                        const HomeContainer(),
-                                        'Home Container',
-                                      );
-
-                                      activeWidget2 = const ShowDetailSong();
-                                    });
-                                  },
-                                  icon: Icon(
-                                    Icons.home,
-                                    color: primaryColor,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Material(
-                                shape: const CircleBorder(), // Bentuk lingkaran
-                                color: Colors
-                                    .transparent, // Atur background ke transparent agar hanya efek klik yang terlihat
-                                child: InkWell(
-                                  borderRadius: BorderRadius.circular(20),
-                                  onTap: () {
-                                    showDialog(
-                                      context: context,
-                                      barrierColor: Colors
-                                          .transparent, // Latar belakang tidak gelap
-                                      builder: (BuildContext context) {
-                                        return Stack(
-                                          children: [
-                                            Positioned(
-                                              top: 73, // Jarak dari atas layar
-                                              right:
-                                                  14, // Jarak dari ujung kanan
-                                              child: Material(
-                                                color: Colors
-                                                    .transparent, // Transparan agar decoration terlihat
-                                                child: IntrinsicWidth(
-                                                  // Menjaga ukuran popup sesuai konten
-                                                  child: Container(
-                                                    padding:
-                                                        const EdgeInsets.all(
-                                                            20),
-                                                    decoration: BoxDecoration(
-                                                      color: tertiaryColor,
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                              16), // Membuat ujung melengkung
-                                                      boxShadow: const [
-                                                        BoxShadow(
-                                                          color: Colors
-                                                              .black26, // Warna shadow
-                                                          blurRadius:
-                                                              10, // Ukuran blur shadow
-                                                          offset: Offset(0,
-                                                              4), // Posisi shadow
+                                                        child: Container(
+                                                          height: 40,
+                                                          color: primaryColor,
+                                                          child: Row(
+                                                            children: [
+                                                              ClipRRect(
+                                                                borderRadius:
+                                                                    BorderRadius
+                                                                        .circular(
+                                                                            4),
+                                                                child:
+                                                                    Container(
+                                                                  width: 35,
+                                                                  height: 35,
+                                                                  color:
+                                                                      secondaryColor,
+                                                                  child: Icon(
+                                                                    Icons
+                                                                        .favorite,
+                                                                    color:
+                                                                        primaryColor,
+                                                                  ),
+                                                                ),
+                                                              ),
+                                                              const SizedBox(
+                                                                  width: 12),
+                                                              const Text(
+                                                                'Liked Songs',
+                                                                style:
+                                                                    TextStyle(
+                                                                  color:
+                                                                      primaryTextColor,
+                                                                  fontSize:
+                                                                      smallFontSize,
+                                                                  fontWeight:
+                                                                      FontWeight
+                                                                          .bold,
+                                                                ),
+                                                              ),
+                                                            ],
+                                                          ),
                                                         ),
-                                                      ],
+                                                      ),
                                                     ),
-                                                    child: Column(
-                                                      mainAxisSize:
-                                                          MainAxisSize.min,
-                                                      crossAxisAlignment:
-                                                          CrossAxisAlignment
-                                                              .start,
-                                                      children: [
-                                                        TextButton(
-                                                          onPressed: () {
-                                                            setState(
-                                                              () {
-                                                                // Provider.of<WidgetStateProvider1>(
-                                                                //         context,
-                                                                //         listen:
-                                                                //             false)
-                                                                //     .changeWidget(
-                                                                //   PersonalProfileContainer(
-                                                                //     userId:
-                                                                //         currentUser!
-                                                                //             .uid,
-                                                                //   ),
-                                                                //   'Profile Container',
-                                                                // );
+                                                    Padding(
+                                                      padding: const EdgeInsets
+                                                          .symmetric(
+                                                          horizontal: 8.0),
+                                                      child: Consumer<
+                                                          PlaylistProvider>(
+                                                        builder: (context,
+                                                            playlistProvider,
+                                                            child) {
+                                                          // if (playlistProvider
+                                                          //     .isFetching) {
+                                                          //   return const Center(
+                                                          //     child:
+                                                          //         CircularProgressIndicator(
+                                                          //       color:
+                                                          //           primaryTextColor,
+                                                          //     ),
+                                                          //   );
+                                                          // }
 
-                                                                // activeWidget2 =
-                                                                //     const ShowDetailSong();
-                                                              },
+                                                          if (playlistProvider
+                                                              .hasError) {
+                                                            return Center(
+                                                              child: Column(
+                                                                mainAxisAlignment:
+                                                                    MainAxisAlignment
+                                                                        .center,
+                                                                children: [
+                                                                  Text(
+                                                                      'Failed to load playlists'),
+                                                                  ElevatedButton(
+                                                                    onPressed:
+                                                                        () {
+                                                                      Provider.of<PlaylistProvider>(
+                                                                              context,
+                                                                              listen: false)
+                                                                          .fetchPlaylists();
+                                                                    },
+                                                                    child: Text(
+                                                                        'Retry'),
+                                                                  ),
+                                                                ],
+                                                              ),
                                                             );
-                                                          },
-                                                          child: const Text(
-                                                            'Profile',
-                                                            style: TextStyle(
-                                                              color:
-                                                                  primaryTextColor,
-                                                              fontWeight:
-                                                                  FontWeight
-                                                                      .bold,
-                                                            ),
-                                                          ),
-                                                        ),
-                                                        const Divider(
-                                                          color:
-                                                              primaryTextColor,
-                                                        ),
-                                                        TextButton(
-                                                          onPressed: _logout,
-                                                          child: const Text(
-                                                            "Log Out",
-                                                            style: TextStyle(
-                                                              color: Colors
-                                                                  .redAccent, // Sesuaikan warna teks
-                                                              fontWeight:
-                                                                  FontWeight
-                                                                      .bold,
-                                                            ),
-                                                          ),
-                                                        ),
-                                                      ],
-                                                    ),
-                                                  ),
+                                                          }
+
+                                                          if (playlistProvider
+                                                              .displayPlaylists
+                                                              .isEmpty) {
+                                                            return const Center(
+                                                              child: Text(
+                                                                  'No playlists found'),
+                                                            );
+                                                          }
+
+                                                          return ListView
+                                                              .builder(
+                                                            shrinkWrap: true,
+                                                            physics:
+                                                                const NeverScrollableScrollPhysics(),
+                                                            itemCount:
+                                                                playlistProvider
+                                                                    .displayPlaylists
+                                                                    .length,
+                                                            itemBuilder:
+                                                                (context,
+                                                                    index) {
+                                                              final playlist =
+                                                                  playlistProvider
+                                                                          .displayPlaylists[
+                                                                      index];
+
+                                                              return GestureDetector(
+                                                                onTap: () {
+                                                                  // Perbarui cara akses data playlist
+                                                                  Provider.of<PlaylistProvider>(
+                                                                          context,
+                                                                          listen:
+                                                                              false)
+                                                                      .updatePlaylistProvider(
+                                                                    playlist[
+                                                                            'playlistId']
+                                                                        as String,
+                                                                    playlist[
+                                                                            'creatorId']
+                                                                        as String,
+                                                                    playlist[
+                                                                            'playlistName']
+                                                                        as String,
+                                                                    playlist[
+                                                                            'playlistDescription']
+                                                                        as String?,
+                                                                    playlist[
+                                                                            'playlistImageUrl']
+                                                                        as String?,
+                                                                    playlist[
+                                                                            'timestamp']
+                                                                        as DateTime,
+                                                                    playlist[
+                                                                            'playlistUserIndex']
+                                                                        as int,
+                                                                    (playlist['songListIds']
+                                                                            as List)
+                                                                        .cast<
+                                                                            String>(),
+                                                                    (playlist['playlistLikeIds']
+                                                                            as List)
+                                                                        .cast<
+                                                                            String>(),
+                                                                    playlist[
+                                                                            'totalDuration']
+                                                                        as Duration,
+                                                                  );
+
+                                                                  Provider.of<WidgetStateProvider1>(
+                                                                          context,
+                                                                          listen:
+                                                                              false)
+                                                                      .changeWidget(
+                                                                    PlaylistContainer(
+                                                                      playlistId:
+                                                                          playlist['playlistId']
+                                                                              as String,
+                                                                    ),
+                                                                    'PlaylistContainer',
+                                                                  );
+                                                                },
+                                                                child: PlayList(
+                                                                  playlistImageUrl:
+                                                                      playlist[
+                                                                              'playlistImageUrl']
+                                                                          as String,
+                                                                  playlistName:
+                                                                      playlist[
+                                                                              'playlistName']
+                                                                          as String,
+                                                                  creatorName: playlist[
+                                                                          'creatorName']
+                                                                      as String,
+                                                                ),
+                                                              );
+                                                            },
+                                                          );
+                                                        },
+                                                      ),
+                                                    )
+                                                  ],
                                                 ),
                                               ),
                                             ),
-                                          ],
-                                        );
-                                      },
-                                    );
-                                  },
-                                  child: CircleAvatar(
-                                      radius: 20,
-                                      backgroundColor: primaryTextColor,
-                                      // (_profileImageUrl == null ||
-                                      //         _profileImageUrl!.isEmpty)
-                                      //     ? primaryTextColor
-                                      //     : quaternaryColor,
-                                      // backgroundImage: (_profileImageUrl !=
-                                      //             null &&
-                                      //         _profileImageUrl!.isNotEmpty)
-                                      //     ? NetworkImage(_profileImageUrl!)
-                                      //     : null, // Tampilkan NetworkImage jika profileImageUrl tersedia
-                                      child: Icon(
-                                        Icons.person,
-                                        color: quaternaryColor,
-                                      )
-                                      // (_profileImageUrl == null ||
-                                      //         _profileImageUrl!.isEmpty)
-                                      //     ? Icon(
-                                      //         Icons.person,
-                                      //         color: quaternaryColor,
-                                      //       ) // Tampilkan icon jika tidak ada gambar
-                                      //     : null,
+                                          ),
+                                          const SizedBox(height: 10),
+                                        ],
                                       ),
+                                    ),
+                                  ),
                                 ),
                               ),
                             ],
                           ),
-                          Expanded(
-                            child: Padding(
-                              padding: const EdgeInsets.only(
-                                  left: 2.0, right: 2.0, top: 12, bottom: 0),
-                              child: Row(
+                        ),
+                      ),
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.all(12),
+                          child: Column(
+                            children: [
+                              Row(
                                 children: [
-                                  // Kontainer pertama
                                   Expanded(
-                                    flex:
-                                        2, // Kontainer pertama menggunakan 2/3 ruang
-                                    child: LayoutBuilder(
-                                      builder: (BuildContext context,
-                                          BoxConstraints constraints) {
-                                        WidgetsBinding.instance
-                                            .addPostFrameCallback((_) {
-                                          Provider.of<WidgetSizeProvider>(
-                                                  context,
-                                                  listen: false)
-                                              .updateExpandedWidth(
-                                                  constraints.maxWidth);
-                                        });
-
-                                        return Container(
-                                          decoration: BoxDecoration(
-                                            color: primaryColor,
-                                            borderRadius: BorderRadius.circular(
-                                                20), // Membuat sudut melengkung
+                                    child: MouseRegion(
+                                      onEnter: (event) => setState(() {
+                                        _isHoveredSearch = true;
+                                      }),
+                                      onExit: (event) => setState(() {
+                                        _isHoveredSearch = false;
+                                      }),
+                                      child: TextFormField(
+                                        controller: searchListController,
+                                        style: const TextStyle(
+                                            color: primaryTextColor),
+                                        decoration: InputDecoration(
+                                          contentPadding:
+                                              const EdgeInsets.all(8),
+                                          prefixIcon: const Padding(
+                                            padding: EdgeInsets.only(
+                                                left: 12.0, right: 8.0),
+                                            child: Icon(Icons.search,
+                                                color: primaryTextColor),
                                           ),
-                                          child: Consumer2<WidgetSizeProvider,
-                                              WidgetStateProvider1>(
-                                            builder: (context,
-                                                widgetSizeProvider,
-                                                widgetStateProvider,
-                                                child) {
-                                              // Mengambil currentWidget setiap kali state berubah
-                                              Widget activeWidget1 =
-                                                  widgetStateProvider
-                                                      .currentWidget;
-
-                                              // You can use widgetSizeProvider.expandedWidth here if needed
-
-                                              return activeWidget1;
-                                            },
+                                          hintText: 'What do you want to play?',
+                                          hintStyle: const TextStyle(
+                                              color: primaryTextColor),
+                                          border: const OutlineInputBorder(
+                                            borderRadius: BorderRadius.all(
+                                                Radius.circular(30)),
+                                            borderSide: BorderSide(
+                                                color: secondaryColor),
                                           ),
-                                        );
-                                      },
+                                          focusedBorder:
+                                              const OutlineInputBorder(
+                                            borderRadius: BorderRadius.all(
+                                                Radius.circular(30)),
+                                            borderSide: BorderSide(
+                                                color: secondaryColor),
+                                          ),
+                                          enabledBorder: OutlineInputBorder(
+                                            borderRadius:
+                                                const BorderRadius.all(
+                                                    Radius.circular(30)),
+                                            borderSide: BorderSide(
+                                              color: _isHoveredSearch
+                                                  ? secondaryColor
+                                                  : primaryTextColor,
+                                            ),
+                                          ),
+                                        ),
+                                        onTap: navigateToHomeContainer,
+                                        onChanged: (value) {
+                                          // Ensure we're on the search list when typing
+                                          navigateToHomeContainer();
+                                        },
+                                      ),
                                     ),
                                   ),
-                                  // Kontainer kedua akan dihilangkan jika resolusi lebih kecil dari iPad
-                                  if (MediaQuery.of(context).size.width >=
-                                      800) ...[
-                                    const SizedBox(width: 12),
-                                    Flexible(
-                                      flex: MediaQuery.of(context).size.width <=
-                                              1300
-                                          ? 1
-                                          : 0, // Menggunakan flex 1 jika lebar layar <= 1000
-                                      child: Container(
-                                        constraints: const BoxConstraints(
-                                          maxWidth:
-                                              370, // Atur max lebar kontainer kedua
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: primaryColor,
-                                          borderRadius: BorderRadius.circular(
-                                              20), // Membuat sudut melengkung
-                                        ),
-                                        child: Consumer<WidgetStateProvider2>(
-                                          builder: (context,
-                                              widgetStateProvider, child) {
-                                            // Mengambil currentWidget setiap kali state berubah
-                                            Widget activeWidget2 =
-                                                widgetStateProvider
-                                                    .currentWidget;
-                                            return activeWidget2;
+                                  const SizedBox(width: 12),
+                                  CircleAvatar(
+                                    backgroundColor:
+                                        primaryTextColor, // Warna latar belakang
+                                    child: IconButton(
+                                      onPressed: () {
+                                        setState(() {
+                                          Provider.of<WidgetStateProvider1>(
+                                                  context,
+                                                  listen: false)
+                                              .changeWidget(
+                                            const HomeContainer(),
+                                            'Home Container',
+                                          );
+
+                                          activeWidget2 =
+                                              const ShowDetailSong();
+                                        });
+                                      },
+                                      icon: Icon(
+                                        Icons.home,
+                                        color: primaryColor,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Material(
+                                    shape:
+                                        const CircleBorder(), // Bentuk lingkaran
+                                    color: Colors
+                                        .transparent, // Atur background ke transparent agar hanya efek klik yang terlihat
+                                    child: InkWell(
+                                      borderRadius: BorderRadius.circular(20),
+                                      onTap: () {
+                                        showDialog(
+                                          context: context,
+                                          barrierColor: Colors
+                                              .transparent, // Latar belakang tidak gelap
+                                          builder: (BuildContext context) {
+                                            return Stack(
+                                              children: [
+                                                Positioned(
+                                                  top:
+                                                      73, // Jarak dari atas layar
+                                                  right:
+                                                      14, // Jarak dari ujung kanan
+                                                  child: Material(
+                                                    color: Colors
+                                                        .transparent, // Transparan agar decoration terlihat
+                                                    child: IntrinsicWidth(
+                                                      // Menjaga ukuran popup sesuai konten
+                                                      child: Container(
+                                                        padding:
+                                                            const EdgeInsets
+                                                                .all(20),
+                                                        decoration:
+                                                            BoxDecoration(
+                                                          color: tertiaryColor,
+                                                          borderRadius:
+                                                              BorderRadius.circular(
+                                                                  16), // Membuat ujung melengkung
+                                                          boxShadow: const [
+                                                            BoxShadow(
+                                                              color: Colors
+                                                                  .black26, // Warna shadow
+                                                              blurRadius:
+                                                                  10, // Ukuran blur shadow
+                                                              offset: Offset(0,
+                                                                  4), // Posisi shadow
+                                                            ),
+                                                          ],
+                                                        ),
+                                                        child: Column(
+                                                          mainAxisSize:
+                                                              MainAxisSize.min,
+                                                          crossAxisAlignment:
+                                                              CrossAxisAlignment
+                                                                  .start,
+                                                          children: [
+                                                            TextButton(
+                                                              onPressed: () {
+                                                                setState(() {
+                                                                  if (_currentUserId !=
+                                                                      null) {
+                                                                    Provider.of<WidgetStateProvider1>(
+                                                                            context,
+                                                                            listen:
+                                                                                false)
+                                                                        .changeWidget(
+                                                                      PersonalProfileContainer(
+                                                                        userId:
+                                                                            _currentUserId!, // Gunakan _currentUserId
+                                                                      ),
+                                                                      'Profile Container',
+                                                                    );
+
+                                                                    activeWidget2 =
+                                                                        const ShowDetailSong();
+                                                                  }
+                                                                });
+                                                              },
+                                                              child: const Text(
+                                                                'Profile',
+                                                                style:
+                                                                    TextStyle(
+                                                                  color:
+                                                                      primaryTextColor,
+                                                                  fontWeight:
+                                                                      FontWeight
+                                                                          .bold,
+                                                                ),
+                                                              ),
+                                                            ),
+                                                            const Divider(
+                                                              color:
+                                                                  primaryTextColor,
+                                                            ),
+                                                            TextButton(
+                                                              onPressed:
+                                                                  _logout,
+                                                              child: const Text(
+                                                                "Log Out",
+                                                                style:
+                                                                    TextStyle(
+                                                                  color: Colors
+                                                                      .redAccent, // Sesuaikan warna teks
+                                                                  fontWeight:
+                                                                      FontWeight
+                                                                          .bold,
+                                                                ),
+                                                              ),
+                                                            ),
+                                                          ],
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                            );
+                                          },
+                                        );
+                                      },
+                                      child: CircleAvatar(
+                                        radius: 20,
+                                        backgroundColor: (profileProvider
+                                                .profileImageUrl.isEmpty)
+                                            ? primaryTextColor
+                                            : tertiaryColor,
+                                        backgroundImage: profileProvider
+                                                    .profileImageUrl
+                                                    .isNotEmpty &&
+                                                File(profileProvider
+                                                        .profileImageUrl)
+                                                    .existsSync()
+                                            ? FileImage(File(profileProvider
+                                                .profileImageUrl))
+                                            : null,
+                                        child: (profileProvider
+                                                    .profileImageUrl.isEmpty ||
+                                                !File(profileProvider
+                                                        .profileImageUrl)
+                                                    .existsSync())
+                                            ? Icon(Icons.person,
+                                                color: primaryColor, size: 20)
+                                            : null,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              Expanded(
+                                child: Padding(
+                                  padding: const EdgeInsets.only(
+                                      left: 2.0,
+                                      right: 2.0,
+                                      top: 12,
+                                      bottom: 0),
+                                  child: Row(
+                                    children: [
+                                      // Kontainer pertama
+                                      Expanded(
+                                        flex:
+                                            2, // Kontainer pertama menggunakan 2/3 ruang
+                                        child: LayoutBuilder(
+                                          builder: (BuildContext context,
+                                              BoxConstraints constraints) {
+                                            WidgetsBinding.instance
+                                                .addPostFrameCallback((_) {
+                                              Provider.of<WidgetSizeProvider>(
+                                                      context,
+                                                      listen: false)
+                                                  .updateExpandedWidth(
+                                                      constraints.maxWidth);
+                                            });
+
+                                            return Container(
+                                              decoration: BoxDecoration(
+                                                color: primaryColor,
+                                                borderRadius: BorderRadius.circular(
+                                                    20), // Membuat sudut melengkung
+                                              ),
+                                              child: Consumer2<
+                                                  WidgetSizeProvider,
+                                                  WidgetStateProvider1>(
+                                                builder: (context,
+                                                    widgetSizeProvider,
+                                                    widgetStateProvider,
+                                                    child) {
+                                                  // Mengambil currentWidget setiap kali state berubah
+                                                  Widget activeWidget1 =
+                                                      widgetStateProvider
+                                                          .currentWidget;
+
+                                                  // You can use widgetSizeProvider.expandedWidth here if needed
+
+                                                  return activeWidget1;
+                                                },
+                                              ),
+                                            );
                                           },
                                         ),
                                       ),
-                                    ),
-                                  ],
-                                ],
+                                      // Kontainer kedua akan dihilangkan jika resolusi lebih kecil dari iPad
+                                      if (MediaQuery.of(context).size.width >=
+                                          800) ...[
+                                        const SizedBox(width: 12),
+                                        Flexible(
+                                          flex: MediaQuery.of(context)
+                                                      .size
+                                                      .width <=
+                                                  1300
+                                              ? 1
+                                              : 0, // Menggunakan flex 1 jika lebar layar <= 1000
+                                          child: Container(
+                                            constraints: const BoxConstraints(
+                                              maxWidth:
+                                                  370, // Atur max lebar kontainer kedua
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: primaryColor,
+                                              borderRadius: BorderRadius.circular(
+                                                  20), // Membuat sudut melengkung
+                                            ),
+                                            child:
+                                                Consumer<WidgetStateProvider2>(
+                                              builder: (context,
+                                                  widgetStateProvider, child) {
+                                                // Mengambil currentWidget setiap kali state berubah
+                                                Widget activeWidget2 =
+                                                    widgetStateProvider
+                                                        .currentWidget;
+                                                return activeWidget2;
+                                              },
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                ),
                               ),
-                            ),
+                            ],
                           ),
-                        ],
+                        ),
                       ),
-                    ),
+                    ],
                   ),
-                ],
-              ),
+                ),
+                // Container baru yang berada di bagian paling bawah
+                Container(
+                  width: double.infinity,
+                  height: 70,
+                  color: quaternaryColor, // Warna container
+                  child: const Center(
+                    child: BottomContainer(),
+                  ),
+                ),
+              ],
             ),
-            // Container baru yang berada di bagian paling bawah
-            Container(
-              width: double.infinity,
-              height: 70,
-              color: quaternaryColor, // Warna container
-              child: const Center(
-                child: BottomContainer(),
-              ),
-            ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 }

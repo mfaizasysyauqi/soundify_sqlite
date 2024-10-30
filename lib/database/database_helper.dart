@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:sqflite/sqflite.dart';
@@ -9,6 +10,7 @@ import 'package:soundify/models/song.dart';
 import 'package:soundify/models/user.dart';
 import 'file_storage_helper.dart'; // Import FileStorageHelper
 
+// database_helper.dart
 class DatabaseHelper {
   static final DatabaseHelper instance = DatabaseHelper._init();
   static Database? _database;
@@ -255,6 +257,70 @@ class DatabaseHelper {
     return null;
   }
 
+// Add to DatabaseHelper class
+  Future<List<Album>> getAlbumsByCreatorId(String creatorId) async {
+    final db = await database;
+    final List<Map<String, dynamic>> maps = await db.query(
+      'albums',
+      where: 'creatorId = ?',
+      whereArgs: [creatorId],
+      orderBy: 'timestamp DESC',
+    );
+
+    return List.generate(maps.length, (i) => Album.fromMap(maps[i]));
+  }
+
+  Future<bool> toggleAlbumLike(String albumId, String userId) async {
+    final db = await database;
+
+    try {
+      return await db.transaction((txn) async {
+        // Get album and user
+        final album = await getAlbumById(albumId);
+        final user = await getUserById(userId);
+
+        if (album == null || user == null) return false;
+
+        // Get current like lists
+        List<String> albumLikeIds = album.albumLikeIds ?? [];
+        List<String> userLikedAlbums = user.userLikedAlbums;
+
+        // Check current like status
+        bool isCurrentlyLiked = albumLikeIds.contains(userId);
+
+        // Update lists based on current status
+        if (isCurrentlyLiked) {
+          albumLikeIds.remove(userId);
+          userLikedAlbums.remove(albumId);
+        } else {
+          albumLikeIds.add(userId);
+          userLikedAlbums.add(albumId);
+        }
+
+        // Update album
+        await txn.update(
+          'albums',
+          {'albumLikeIds': albumLikeIds.join(',')},
+          where: 'albumId = ?',
+          whereArgs: [albumId],
+        );
+
+        // Update user
+        await txn.update(
+          'users',
+          {'userLikedAlbums': userLikedAlbums.join(',')},
+          where: 'userId = ?',
+          whereArgs: [userId],
+        );
+
+        return !isCurrentlyLiked;
+      });
+    } catch (e) {
+      print('Error toggling album like: $e');
+      return false;
+    }
+  }
+
   Future<void> updateAlbum(Album album) async {
     final db = await database;
     await db.update(
@@ -408,11 +474,84 @@ class DatabaseHelper {
     return null;
   }
 
+// Add to DatabaseHelper class
+  Future<List<Playlist>> getPlaylistsByCreatorId(String creatorId) async {
+    final db = await database;
+    final List<Map<String, dynamic>> maps = await db.query(
+      'playlists',
+      where: 'creatorId = ?',
+      whereArgs: [creatorId],
+      orderBy: 'timestamp DESC',
+    );
+
+    return List.generate(maps.length, (i) => Playlist.fromMap(maps[i]));
+  }
+
+  Future<bool> togglePlaylistLike(String playlistId, String userId) async {
+    final db = await database;
+
+    try {
+      return await db.transaction((txn) async {
+        // Get playlist and user
+        final playlist = await getPlaylistById(playlistId);
+        final user = await getUserById(userId);
+
+        if (playlist == null || user == null) return false;
+
+        // Get current like lists
+        List<String> playlistLikeIds = playlist.playlistLikeIds ?? [];
+        List<String> userLikedPlaylists = user.userLikedPlaylists;
+
+        // Check current like status
+        bool isCurrentlyLiked = playlistLikeIds.contains(userId);
+
+        // Update lists based on current status
+        if (isCurrentlyLiked) {
+          playlistLikeIds.remove(userId);
+          userLikedPlaylists.remove(playlistId);
+        } else {
+          playlistLikeIds.add(userId);
+          userLikedPlaylists.add(playlistId);
+        }
+
+        // Update playlist
+        await txn.update(
+          'playlists',
+          {'playlistLikeIds': playlistLikeIds.join(',')},
+          where: 'playlistId = ?',
+          whereArgs: [playlistId],
+        );
+
+        // Update user
+        await txn.update(
+          'users',
+          {'userLikedPlaylists': userLikedPlaylists.join(',')},
+          where: 'userId = ?',
+          whereArgs: [userId],
+        );
+
+        return !isCurrentlyLiked;
+      });
+    } catch (e) {
+      print('Error toggling playlist like: $e');
+      return false;
+    }
+  }
+
   // Update Playlist
   Future<int> updatePlaylist(Playlist playlist) async {
-    Database db = await instance.database;
-    return await db.update('playlists', playlist.toMap(),
-        where: 'playlistId = ?', whereArgs: [playlist.playlistId]);
+    final db = await database;
+    return await db.update(
+      'playlists',
+      {
+        ...playlist.toMap(),
+        'songListIds': playlist.songListIds?.join(',') ??
+            '', // Pastikan konversi ke string dengan benar
+      },
+      where: 'playlistId = ?',
+      whereArgs: [playlist.playlistId],
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
   }
 
   // Delete Playlist
@@ -696,6 +835,7 @@ class DatabaseHelper {
   }
 
   // Get songs by artist
+// Get songs by artist
   Future<List<Song>> getSongsByArtist(String artistId) async {
     Database db = await instance.database;
     final List<Map<String, dynamic>> maps = await db.query(
@@ -704,9 +844,28 @@ class DatabaseHelper {
       whereArgs: [artistId],
     );
 
-    return List.generate(maps.length, (i) {
-      return Song.fromMap(maps[i]);
-    });
+    List<Song> artistSongs = [];
+    for (var map in maps) {
+      Song song = Song.fromMap(map);
+
+      // Get artist details
+      User? artist = await getUserByArtistId(song.artistId);
+      if (artist != null) {
+        song.artistName = artist.fullName;
+        song.profileImageUrl = artist.profileImageUrl;
+        song.bioImageUrl = artist.bioImageUrl;
+      }
+
+      // Get album details using albumId
+      Album? album = await getAlbumById(song.albumId);
+      if (album != null) {
+        song.albumName = album.albumName;
+      }
+
+      artistSongs.add(song);
+    }
+
+    return artistSongs;
   }
 
   // Get songs by album
@@ -776,6 +935,50 @@ class DatabaseHelper {
       return songs;
     }
     return [];
+  }
+
+// database_helper.dart
+  Future<bool> removeSongFromPlaylist(String songId, String playlistId) async {
+    try {
+      final db = await database;
+
+      // Get the playlist
+      final playlist = await getPlaylistById(playlistId);
+      if (playlist == null) return false;
+
+      // Remove songId from playlist's songListIds
+      final updatedSongListIds = List<String>.from(playlist.songListIds ?? [])
+        ..remove(songId);
+
+      // Update playlist
+      await db.update(
+        'playlists',
+        {'songListIds': jsonEncode(updatedSongListIds)},
+        where: 'playlistId = ?',
+        whereArgs: [playlistId],
+      );
+
+      // Get the song
+      final song = await getSongById(songId);
+      if (song == null) return false;
+
+      // Remove playlistId from song's playlistIds
+      final updatedPlaylistIds = List<String>.from(song.playlistIds ?? [])
+        ..remove(playlistId);
+
+      // Update song
+      await db.update(
+        'songs',
+        {'playlistIds': jsonEncode(updatedPlaylistIds)},
+        where: 'songId = ?',
+        whereArgs: [songId],
+      );
+
+      return true;
+    } catch (e) {
+      print('Error removing song from playlist: $e');
+      return false;
+    }
   }
 
   // Get liked songs

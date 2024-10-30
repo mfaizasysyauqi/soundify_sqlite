@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:soundify/models/song.dart';
 
+// song_list_item_provider.dart
 // Create a new provider class for managing song list state
 class SongListItemProvider with ChangeNotifier {
   String? _lastListenedSongId;
@@ -59,6 +60,14 @@ class SongListItemProvider with ChangeNotifier {
   void clearSongs() {
     _songs.clear();
     _filteredSongs.clear();
+    notifyListeners();
+  }
+
+  void removeSong(String songId) {
+    // Remove from filteredSongs
+    filteredSongs.removeWhere((song) => song.songId == songId);
+    // Remove from allSongs if it exists
+    _songs.removeWhere((song) => song.songId == songId);
     notifyListeners();
   }
 }

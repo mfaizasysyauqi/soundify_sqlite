@@ -25,7 +25,6 @@ class PlaylistContainer extends StatefulWidget {
   State<PlaylistContainer> createState() => _PlaylistContainerState();
 }
 
-bool showModal = false;
 OverlayEntry? _overlayEntry;
 Uint8List? _selectedImage;
 
@@ -342,7 +341,7 @@ class _PlaylistContainerState extends State<PlaylistContainer> {
                   text: TextSpan(
                     text: playlistProvider.playlistDescription,
                     style: TextStyle(
-                      color: senaryColor, // quaternaryTextColor
+                      color: quaternaryTextColor, // quaternaryTextColor
                       fontWeight: mediumWeight,
                       fontSize: isMediumScreen ? 14 : 12, // smallFontSize
                     ),

@@ -9,7 +9,7 @@ class Playlist {
   late String? playlistImageUrl;
   final DateTime timestamp; // Use DateTime for timestamp
   final int playlistUserIndex;
-  late List<String>? songListIds;
+  final List<String>? songListIds;
   late List<String>? playlistLikeIds;
   late final Duration totalDuration;
 
@@ -34,14 +34,13 @@ class Playlist {
       'playlistId': playlistId,
       'creatorId': creatorId,
       'playlistName': playlistName,
-      'playlistDescription': playlistDescription,
-      'playlistImageUrl': playlistImageUrl,
-      'timestamp': timestamp.toIso8601String(), // Store DateTime as ISO string
+      'playlistDescription': playlistDescription ?? '',
+      'playlistImageUrl': playlistImageUrl ?? '',
+      'timestamp': timestamp.toIso8601String(),
       'playlistUserIndex': playlistUserIndex,
-      'songListIds':
-          songListIds?.join(','), // Convert List to comma-separated String
-      'playlistLikeIds': playlistLikeIds?.join(','),
-      'totalDuration': totalDuration.inSeconds, // Store Duration as seconds
+      'songListIds': songListIds?.join(',') ?? '',
+      'playlistLikeIds': playlistLikeIds?.join(',') ?? '',
+      'totalDuration': totalDuration.inSeconds,
     };
   }
 
@@ -55,9 +54,10 @@ class Playlist {
       playlistImageUrl: map['playlistImageUrl'],
       timestamp: DateTime.parse(map['timestamp']), // Parse string to DateTime
       playlistUserIndex: map['playlistUserIndex'],
-      songListIds: map['songListIds'] != null
-          ? (map['songListIds'] as String).split(',')
-          : [],
+      songListIds:
+          map['songListIds'] != null && map['songListIds'].toString().isNotEmpty
+              ? map['songListIds'].toString().split(',')
+              : [],
       playlistLikeIds: map['playlistLikeIds'] != null
           ? (map['playlistLikeIds'] as String).split(',')
           : [],

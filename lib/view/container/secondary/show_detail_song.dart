@@ -1,6 +1,8 @@
 import 'dart:io';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:soundify/provider/profile_provider.dart';
 import 'package:soundify/provider/song_provider.dart';
 import 'package:soundify/view/style/style.dart';
 
@@ -11,7 +13,177 @@ class ShowDetailSong extends StatefulWidget {
   State<ShowDetailSong> createState() => _ShowDetailSongState();
 }
 
+OverlayEntry? _overlayEntry;
+
 class _ShowDetailSongState extends State<ShowDetailSong> {
+  Future<void> _showProfileBioModal(BuildContext context) async {
+    try {
+      // Access the ProfileProvider
+      final profileProvider =
+          Provider.of<ProfileProvider>(context, listen: false);
+
+      _overlayEntry = OverlayEntry(
+        builder: (context) => StatefulBuilder(
+          builder: (context, setState) {
+            return Stack(
+              children: [
+                Positioned.fill(
+                  child: GestureDetector(
+                    onTap: () {
+                      _closeModal();
+                    },
+                    child: Container(
+                      color: Colors.black.withOpacity(0.5),
+                    ),
+                  ),
+                ),
+                Center(
+                  child: Material(
+                    color: Colors.transparent,
+                    child: Container(
+                      width: 480,
+                      height: 300, // Adjust height as needed
+                      padding: const EdgeInsets.all(16.0),
+                      decoration: BoxDecoration(
+                        color: tertiaryColor,
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.3),
+                            blurRadius: 10,
+                            offset: const Offset(0, 5),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
+                          Row(
+                            children: [
+                              // Song image
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(4),
+                                child: SizedBox(
+                                  height: 50,
+                                  width: 50,
+                                  child: profileProvider.bioImageUrl.isEmpty
+                                      ? profileProvider.profileImageUrl.isEmpty
+                                          ? Container(
+                                              color: primaryTextColor,
+                                              child: Icon(Icons.library_music,
+                                                  color: primaryColor,
+                                                  size: 25))
+                                          : Image.file(
+                                              File(profileProvider
+                                                  .profileImageUrl),
+                                              fit: BoxFit.cover,
+                                              errorBuilder: (context, error,
+                                                      stackTrace) =>
+                                                  Container(
+                                                color: senaryColor,
+                                                child: const Icon(
+                                                  Icons.broken_image,
+                                                  color: Colors.white,
+                                                  size: 25,
+                                                ),
+                                              ),
+                                            )
+                                      : Image.file(
+                                          File(profileProvider.bioImageUrl),
+                                          fit: BoxFit.cover,
+                                          errorBuilder:
+                                              (context, error, stackTrace) =>
+                                                  Container(
+                                            color: senaryColor,
+                                            child: const Icon(
+                                              Icons.broken_image,
+                                              color: Colors.white,
+                                              size: 25,
+                                            ),
+                                          ),
+                                        ),
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              // Song title and artist name
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      profileProvider.fullName,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        color: primaryTextColor,
+                                        fontWeight: mediumWeight,
+                                        fontSize: smallFontSize,
+                                      ),
+                                    ),
+                                    Text(
+                                      profileProvider.username,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        color: quaternaryTextColor,
+                                        fontWeight: mediumWeight,
+                                        fontSize: microFontSize,
+                                      ),
+                                    )
+                                  ],
+                                ),
+                              ),
+                              IconButton(
+                                onPressed: () {
+                                  _closeModal();
+                                },
+                                icon: const Icon(
+                                  Icons.close,
+                                  color: primaryTextColor,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const Divider(
+                            thickness: 1,
+                            color: primaryTextColor,
+                          ),
+                          Expanded(
+                            // Make the scrollable area expand
+                            child: SingleChildScrollView(
+                              child: Text(
+                                profileProvider.bio,
+                                style: const TextStyle(
+                                  color: quaternaryTextColor,
+                                  fontWeight: mediumWeight,
+                                  fontSize: microFontSize,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
+      );
+
+      Overlay.of(context).insert(_overlayEntry!); // Show overlay
+    } catch (e) {
+      print('Error showing profile bio modal: $e');
+    }
+  }
+
+  void _closeModal() {
+    if (_overlayEntry != null) {
+      _overlayEntry!.remove(); // Hapus overlay
+      _overlayEntry = null;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final songProvider = Provider.of<SongProvider>(context);
@@ -114,13 +286,22 @@ class _ShowDetailSongState extends State<ShowDetailSong> {
                               Padding(
                                 padding: const EdgeInsets.symmetric(
                                     horizontal: 16.0),
-                                child: Text(
-                                  songProvider.userBio,
-                                  maxLines: 3,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    color: quaternaryTextColor,
-                                    fontSize: microFontSize,
+                                child: IntrinsicWidth(
+                                  child: RichText(
+                                    text: TextSpan(
+                                      text: songProvider.userBio,
+                                      style: TextStyle(
+                                        color: quaternaryTextColor,
+                                        fontWeight: mediumWeight,
+                                        fontSize: microFontSize,
+                                      ),
+                                      recognizer: TapGestureRecognizer()
+                                        ..onTap = () async {
+                                          _showProfileBioModal(context);
+                                        },
+                                    ),
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
                               ),

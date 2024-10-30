@@ -8,6 +8,7 @@ import 'package:soundify/provider/auth_provider.dart';
 import 'package:soundify/provider/image_provider.dart';
 import 'package:soundify/provider/like_provider.dart';
 import 'package:soundify/provider/playlist_provider.dart';
+import 'package:soundify/provider/profile_provider.dart';
 import 'package:soundify/provider/song_list_item_provider.dart';
 import 'package:soundify/provider/song_provider.dart';
 import 'package:soundify/provider/widget_size_provider.dart';
@@ -79,6 +80,7 @@ void main() async {
         ChangeNotifierProvider(create: (_) => ImageProviderData()),
         ChangeNotifierProvider(create: (_) => SongListItemProvider()),
         ChangeNotifierProvider(create: (_) => LikeProvider()),
+        ChangeNotifierProvider(create: (_) => ProfileProvider()),
       ],
       child: const MyApp(),
     ),

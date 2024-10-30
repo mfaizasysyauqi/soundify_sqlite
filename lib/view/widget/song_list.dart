@@ -17,6 +17,16 @@ import 'package:soundify/view/container/secondary/menu/song_menu.dart';
 import 'package:soundify/view/style/style.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
+// song_list.dart
+// Add this extension method at the top of your file
+extension ListExtension<T> on List<T> {
+  T? firstWhereOrNull(bool Function(T) test) {
+    for (var element in this) {
+      if (test(element)) return element;
+    }
+    return null;
+  }
+}
 
 class SongList extends StatefulWidget {
   final String userId;
@@ -40,7 +50,7 @@ TextEditingController searchListController = TextEditingController();
 
 class _SongListState extends State<SongList> {
   DatabaseHelper dbHelper = DatabaseHelper.instance;
-
+  final songProvider = SongProvider();
   @override
   void initState() {
     super.initState();
@@ -70,6 +80,7 @@ class _SongListState extends State<SongList> {
     if (mounted) {
       searchListController.removeListener(_handleSearchChange);
     }
+
     super.dispose();
   }
 
@@ -165,14 +176,27 @@ class _SongListState extends State<SongList> {
         //   displayedSongs.sort((a, b) => b.timestamp.compareTo(a.timestamp));
         // }
 
+        if (displayedSongs.isEmpty) {
+          return const Center(
+            child: Text(
+              'No songs available',
+              style: TextStyle(color: primaryTextColor),
+            ),
+          );
+        }
+
         return ListView.builder(
           itemCount: displayedSongs.length,
           itemBuilder: (context, index) {
+            if (index >= displayedSongs.length) {
+              return null;
+            }
             final song = displayedSongs[index];
             return SongListItem(
               index: index,
-              songId: song.songId, // Pass songId explicitly
+              songId: song.songId,
               pageName: widget.pageName,
+              playlistId: widget.playlistId,
             );
           },
         );
@@ -185,11 +209,14 @@ class SongListItem extends StatefulWidget {
   final int index;
   final String songId;
   final String pageName;
-  const SongListItem(
-      {super.key,
-      required this.index,
-      required this.songId,
-      required this.pageName});
+  final String playlistId;
+  const SongListItem({
+    super.key,
+    required this.index,
+    required this.songId,
+    required this.pageName,
+    required this.playlistId,
+  });
 
   @override
   _SongListItemState createState() => _SongListItemState();
@@ -205,9 +232,14 @@ class _SongListItemState extends State<SongListItem> {
     });
   }
 
+  // Update the existing _handleToggleLike method
   Future<void> _handleToggleLike(
-      String songId, LikeProvider likeProvider) async {
+    String songId,
+    LikeProvider likeProvider,
+    BuildContext context,
+  ) async {
     final currentUser = await DatabaseHelper.instance.getCurrentUser();
+
     if (currentUser == null) {
       print('No user logged in');
       return;
@@ -222,12 +254,9 @@ class _SongListItemState extends State<SongListItem> {
       // Update LikeProvider state
       likeProvider.updateLikeState(songId, isNowLiked);
 
-      // Refresh liked songs list if we're in LikedSongContainer
-      if (mounted) {
-        final songList = context.findAncestorWidgetOfExactType<SongList>();
-        if (songList?.pageName == "LikedSongContainer") {
-          await likeProvider.fetchLikedSongs();
-        }
+      // Refresh liked songs list if necessary
+      if (widget.pageName == "LikedSongContainer") {
+        await likeProvider.fetchLikedSongs();
       }
     } catch (e) {
       print('Error updating likes: $e');
@@ -237,57 +266,79 @@ class _SongListItemState extends State<SongListItem> {
   @override
   void initState() {
     super.initState();
-    final listProvider =
-        Provider.of<SongListItemProvider>(context, listen: false);
-    final song = listProvider.filteredSongs[widget.index];
-    Provider.of<LikeProvider>(context, listen: false).checkIfLiked(song.songId);
 
-    songProvider = Provider.of<SongProvider>(context, listen: false);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
 
-    if (song.songId == listProvider.lastListenedSongId) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _playSelectedSong();
-      });
-    }
+      final listProvider =
+          Provider.of<SongListItemProvider>(context, listen: false);
+      songProvider = Provider.of<SongProvider>(context, listen: false);
+
+      // Add null check and bounds check
+      if (widget.index < listProvider.filteredSongs.length) {
+        final song = listProvider.filteredSongs[widget.index];
+        Provider.of<LikeProvider>(context, listen: false)
+            .checkIfLiked(song.songId);
+
+        if (song.songId == listProvider.lastListenedSongId) {
+          _playSelectedSong();
+        }
+      }
+
+      final likeProvider = Provider.of<LikeProvider>(context, listen: false);
+      likeProvider.fetchLikedSongs();
+    });
   }
 
-  Future<void> _checkIfLiked() async {
-    final currentUser = await DatabaseHelper.instance.getCurrentUser();
+  void _playSelectedSong() {
+    if (!mounted) return;
+
     final listProvider =
         Provider.of<SongListItemProvider>(context, listen: false);
+
+    // Check if the index is valid
+    if (widget.index >= listProvider.filteredSongs.length) return;
+
     final song = listProvider.filteredSongs[widget.index];
 
-    if (currentUser != null && song.likeIds != null) {
+    // Initialize songProvider if it's null
+    songProvider ??= Provider.of<SongProvider>(context, listen: false);
+
+    // Null check for songProvider
+    if (songProvider == null) return;
+
+    try {
+      if (songProvider?.songId == song.songId && songProvider!.isPlaying) {
+        songProvider!.pauseOrResume();
+      } else {
+        songProvider!.stop();
+        songProvider!.setSong(
+          song.songId,
+          song.senderId,
+          song.artistId,
+          song.songTitle,
+          song.profileImageUrl,
+          song.songImageUrl,
+          song.bioImageUrl,
+          song.artistName,
+          song.songUrl,
+          song.songDuration,
+          widget.index,
+          song.bio ?? '',
+        );
+      }
+
       if (mounted) {
         setState(() {});
       }
-    }
-  }
-
-  void _playSelectedSong() async {
-    final listProvider =
-        Provider.of<SongListItemProvider>(context, listen: false);
-    final song = listProvider.filteredSongs[widget.index];
-
-    if (songProvider?.songId == song.songId && songProvider!.isPlaying) {
-      songProvider!.pauseOrResume();
-    } else {
-      songProvider!.stop();
-      songProvider!.setSong(
-        song.songId,
-        song.senderId,
-        song.artistId,
-        song.songTitle,
-        song.profileImageUrl,
-        song.songImageUrl,
-        song.bioImageUrl,
-        song.artistName,
-        song.songUrl,
-        song.songDuration,
-        widget.index,
-      );
-      if (!mounted) return;
-      setState(() {});
+    } catch (e) {
+      print('Error playing song: $e');
+      // Optionally show an error message to the user
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error playing song: $e')),
+        );
+      }
     }
   }
 
@@ -296,10 +347,16 @@ class _SongListItemState extends State<SongListItem> {
     final screenWidth = MediaQuery.of(context).size.width;
     return Consumer2<SongListItemProvider, LikeProvider>(
       builder: (context, listProvider, likeProvider, child) {
-        final song = widget.pageName == "LikedSongContainer"
-            ? likeProvider.likedSongs
-                .firstWhere((s) => s.songId == widget.songId)
-            : listProvider.filteredSongs[widget.index];
+        Song? song;
+        if (widget.pageName == "LikedSongContainer") {
+          song = likeProvider.likedSongs
+              .firstWhereOrNull((s) => s.songId == widget.songId);
+        } else if (widget.index < listProvider.filteredSongs.length) {
+          song = listProvider.filteredSongs[widget.index];
+        }
+        if (song == null) {
+          return const SizedBox.shrink(); // Return empty widget if song is null
+        }
         final formattedDuration = _formatDuration(song.songDuration);
         final formattedDate = DateFormat('MMM d, yyyy').format(song.timestamp);
         final isClicked = listProvider.clickedIndex == widget.index;
@@ -310,7 +367,7 @@ class _SongListItemState extends State<SongListItem> {
           child: GestureDetector(
             onTap: () {
               listProvider.setClickedIndex(widget.index);
-              listProvider.setLastListenedSongId(song.songId);
+              listProvider.setLastListenedSongId(song!.songId);
               _playSelectedSong();
               songProvider?.setShouldPlay(true);
               WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -339,7 +396,6 @@ class _SongListItemState extends State<SongListItem> {
       },
     );
   }
-
   Widget _buildListItem(
     BuildContext context,
     double screenWidth,
@@ -426,15 +482,15 @@ class _SongListItemState extends State<SongListItem> {
                           fit: BoxFit.cover,
                           errorBuilder: (context, error, stackTrace) =>
                               Container(
-                            color: Colors.grey,
+                            color: senaryColor,
                             child: const Icon(Icons.broken_image,
-                                color: Colors.white),
+                                color: primaryTextColor),
                           ),
                         )
                       : Container(
-                          color: Colors.grey,
+                          color: senaryColor,
                           child: const Icon(Icons.broken_image,
-                              color: Colors.white),
+                              color: primaryTextColor),
                         ))
                   : const SizedBox.shrink(),
             ),
@@ -552,7 +608,7 @@ class _SongListItemState extends State<SongListItem> {
                       size: smallFontSize,
                     ),
                     onTap: () async {
-                      await _handleToggleLike(song.songId, likeProvider);
+                      await _handleToggleLike(song.songId, likeProvider, context);
                     },
                   ),
                 )
@@ -587,6 +643,8 @@ class _SongListItemState extends State<SongListItem> {
                       songDuration: song.songDuration,
                       originalIndex: widget.index,
                       likedIds: song.likeIds,
+                      pageName: widget.pageName,
+                      playlistId: widget.playlistId,
                     ),
                     'SongMenu',
                   );
