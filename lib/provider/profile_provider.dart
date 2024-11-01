@@ -6,13 +6,16 @@ import 'package:soundify/database/file_storage_helper.dart';
 import 'package:soundify/models/user.dart';
 
 class ProfileProvider with ChangeNotifier {
+  // Private fields
   User? _currentUser;
   bool _isLoading = false;
+  bool _disposed = false;
 
+  // Public getters
   User? get currentUser => _currentUser;
   bool get isLoading => _isLoading;
 
-  // Getters for specific user properties
+  // User property getters
   String get username => _currentUser?.username ?? '';
   String get fullName => _currentUser?.fullName ?? '';
   String get profileImageUrl => _currentUser?.profileImageUrl ?? '';
@@ -20,28 +23,65 @@ class ProfileProvider with ChangeNotifier {
   String get bio => _currentUser?.bio ?? '';
   List<String> get followers => _currentUser?.followers ?? [];
   List<String> get following => _currentUser?.following ?? [];
-  // Add method to load specific user
-  Future<void> loadUserById(String userId) async {
-    if (_isLoading) return; // Prevent multiple simultaneous loads
 
-    _isLoading = true;
-    notifyListeners();
+  @override
+  void dispose() {
+    _disposed = true;
+    super.dispose();
+  }
 
-    try {
-      final user = await DatabaseHelper.instance.getUserById(userId);
-      _currentUser = user;
-    } catch (e) {
-      print('Error loading user: $e');
-    } finally {
-      _isLoading = false;
-      notifyListeners();
+  @override
+  void notifyListeners() {
+    if (!_disposed) {
+      super.notifyListeners();
     }
   }
 
-  // Add method to refresh user data
-  Future<void> refreshUser() async {
-    if (_currentUser == null) return;
-    await loadUserById(_currentUser!.userId);
+  Future<void> updateFollowStatus(
+    String currentUserId,
+    String targetUserId,
+    bool isFollowing,
+  ) async {
+    if (_disposed) return;
+
+    try {
+      await updateFollowers(currentUserId, isFollowing);
+      await loadUserById(targetUserId);
+    } catch (e) {
+      print('Error updating follow status: $e');
+    }
+  }
+
+  Future<void> loadUserById(String userId) async {
+    if (_disposed || _isLoading) return;
+
+    try {
+      _isLoading = true;
+      // Notify only once at the start of loading
+      notifyListeners();
+
+      final user = await DatabaseHelper.instance.getUserById(userId);
+
+      if (!_disposed) {
+        _currentUser = user;
+        _isLoading = false;
+        // Notify once after the data is loaded
+        notifyListeners();
+      }
+    } catch (e) {
+      print('Error loading user: $e');
+      if (!_disposed) {
+        _isLoading = false;
+        notifyListeners();
+      }
+    }
+  }
+
+  // Add a method to refresh the current user's data
+  Future<void> refreshCurrentUser() async {
+    if (_currentUser != null) {
+      await loadUserById(_currentUser!.userId);
+    }
   }
 
   // Add method to handle both bio and bio image update

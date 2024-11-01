@@ -1001,10 +1001,16 @@ class _PersonalProfileContainerState extends State<PersonalProfileContainer> {
       );
       return _cachedSongList!;
     } else if (_isPlaylistClicked && _isHavePlaylist) {
-      _cachedPlaylistList ??= ProfilePlaylistList();
+      _cachedPlaylistList ??= ProfilePlaylistList(
+        userId: widget.userId,
+        pageName: "PersonalProfileContainer",
+      );
       return _cachedPlaylistList!;
     } else if (_isAlbumClicked && _isHaveAlbum) {
-      _cachedAlbumList ??= ProfileAlbumList();
+      _cachedAlbumList ??= ProfileAlbumList(
+        userId: widget.userId,
+        pageName: "PersonalProfileContainer",
+      );
       return _cachedAlbumList!;
     }
 
@@ -1064,12 +1070,18 @@ class _PersonalProfileContainerState extends State<PersonalProfileContainer> {
   }
 
   Widget _buildPlaylistList() {
-    _cachedPlaylistList ??= ProfilePlaylistList();
+    _cachedPlaylistList ??= ProfilePlaylistList(
+      userId: widget.userId,
+      pageName: "PersonalProfileContainer",
+    );
     return _cachedPlaylistList!;
   }
 
   Widget _buildAlbumList() {
-    _cachedAlbumList ??= ProfileAlbumList();
+    _cachedAlbumList ??= ProfileAlbumList(
+      userId: widget.userId,
+      pageName: "PersonalProfileContainer",
+    );
     return _cachedAlbumList!;
   }
 }

@@ -57,22 +57,31 @@ class _ProfileMenuState extends State<ProfileMenu> {
 
   Future<void> _handleImageUpload(String imagePath) async {
     try {
+      // Mendapatkan instance ProfileProvider
       final profileProvider =
           Provider.of<ProfileProvider>(context, listen: false);
       final currentUser = profileProvider.currentUser;
 
       if (currentUser != null) {
+        // Menyimpan gambar ke penyimpanan lokal
         final String savedImagePath = await FileStorageHelper.instance
             .saveProfileImage(currentUser.userId, imagePath);
 
+        // Memperbarui profile image URL di database
         await profileProvider.updateProfile(profileImageUrl: savedImagePath);
 
+        // Memperbarui state provider untuk memastikan UI terupdate
+        await Provider.of<ProfileProvider>(context, listen: false)
+            .refreshCurrentUser();
+
+        // Membersihkan state lokal
         setState(() {
           _selectedImagePath = null;
         });
       }
     } catch (e) {
       print('Error updating profile image: $e');
+      // Anda bisa menambahkan penanganan error yang lebih baik di sini
     }
   }
 

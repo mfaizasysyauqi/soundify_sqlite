@@ -12,11 +12,14 @@ import 'package:soundify/provider/song_provider.dart';
 import 'package:soundify/provider/widget_state_provider_1.dart';
 import 'package:soundify/provider/widget_state_provider_2.dart';
 import 'package:soundify/view/container/primary/album_container.dart';
+import 'package:soundify/view/container/primary/other_profile_container.dart';
+import 'package:soundify/view/container/primary/personal_profile_container.dart';
 import 'package:soundify/view/container/secondary/show_detail_song.dart';
 import 'package:soundify/view/container/secondary/menu/song_menu.dart';
 import 'package:soundify/view/style/style.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
+
 // song_list.dart
 // Add this extension method at the top of your file
 extension ListExtension<T> on List<T> {
@@ -197,6 +200,7 @@ class _SongListState extends State<SongList> {
               songId: song.songId,
               pageName: widget.pageName,
               playlistId: widget.playlistId,
+              userId: widget.userId,
             );
           },
         );
@@ -210,12 +214,14 @@ class SongListItem extends StatefulWidget {
   final String songId;
   final String pageName;
   final String playlistId;
+  final String userId;
   const SongListItem({
     super.key,
     required this.index,
     required this.songId,
     required this.pageName,
     required this.playlistId,
+    required this.userId,
   });
 
   @override
@@ -396,6 +402,7 @@ class _SongListItemState extends State<SongListItem> {
       },
     );
   }
+
   Widget _buildListItem(
     BuildContext context,
     double screenWidth,
@@ -470,6 +477,7 @@ class _SongListItemState extends State<SongListItem> {
       ),
       child: Row(
         children: [
+          // Image section remains the same...
           ClipRRect(
             borderRadius: BorderRadius.circular(4),
             child: SizedBox(
@@ -510,13 +518,52 @@ class _SongListItemState extends State<SongListItem> {
                     fontSize: smallFontSize,
                   ),
                 ),
-                Text(
-                  song.artistName ?? '',
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: quaternaryTextColor,
-                    fontWeight: mediumWeight,
-                    fontSize: microFontSize,
+                IntrinsicWidth(
+                  child: FutureBuilder<User?>(
+                    future: DatabaseHelper.instance.getCurrentUser(),
+                    builder: (context, snapshot) {
+                      return RichText(
+                        text: TextSpan(
+                          text: song.artistName ?? '',
+                          style: const TextStyle(
+                            color: quaternaryTextColor,
+                            fontWeight: mediumWeight,
+                            fontSize: microFontSize,
+                          ),
+                          recognizer: TapGestureRecognizer()
+                            ..onTap = () {
+                              // Check if we're already in OtherProfileContainer
+                              if (widget.pageName == "OtherProfileContainer") {
+                                // If the clicked artist is the same as the current profile, do nothing
+                                if (widget.userId == song.artistId) {
+                                  return;
+                                }
+                              }
+
+                              // Always navigate to OtherProfileContainer when clicking artist name
+                              // in song list unless it's the current user
+                              if (snapshot.hasData &&
+                                  snapshot.data?.userId == song.artistId) {
+                                Provider.of<WidgetStateProvider1>(context,
+                                        listen: false)
+                                    .changeWidget(
+                                  PersonalProfileContainer(
+                                      userId: song.artistId),
+                                  'PersonalProfileContainer',
+                                );
+                              } else {
+                                Provider.of<WidgetStateProvider1>(context,
+                                        listen: false)
+                                    .changeWidget(
+                                  OtherProfileContainer(userId: song.artistId),
+                                  'OtherProfileContainer',
+                                );
+                              }
+                            },
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      );
+                    },
                   ),
                 ),
               ],
@@ -608,7 +655,8 @@ class _SongListItemState extends State<SongListItem> {
                       size: smallFontSize,
                     ),
                     onTap: () async {
-                      await _handleToggleLike(song.songId, likeProvider, context);
+                      await _handleToggleLike(
+                          song.songId, likeProvider, context);
                     },
                   ),
                 )

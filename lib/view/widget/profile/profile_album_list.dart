@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
 import 'package:intl/intl.dart'; // Import intl
@@ -11,6 +12,7 @@ import 'package:soundify/models/user.dart';
 import 'package:soundify/provider/widget_state_provider_1.dart';
 import 'package:soundify/provider/widget_state_provider_2.dart';
 import 'package:soundify/view/container/primary/album_container.dart';
+import 'package:soundify/view/container/primary/other_profile_container.dart';
 import 'package:soundify/view/container/primary/personal_profile_container.dart';
 import 'package:soundify/view/container/secondary/menu/album_menu.dart';
 import 'package:soundify/view/style/style.dart'; // Pastikan file style sudah ada
@@ -18,8 +20,12 @@ import 'package:soundify/view/style/style.dart'; // Pastikan file style sudah ad
 import 'package:provider/provider.dart'; // Tambahkan provider
 
 class ProfileAlbumList extends StatefulWidget {
+  final String userId;
+  final String pageName;
   const ProfileAlbumList({
     super.key,
+    required this.userId,
+    required this.pageName,
   });
 
   @override
@@ -44,12 +50,12 @@ class _ProfileAlbumListState extends State<ProfileAlbumList> {
     _loadAlbums();
   }
 
+  // Modified _loadAlbums method to use widget.userId
   Future<void> _loadAlbums() async {
     try {
-      final currentUser = await _db.getCurrentUser();
-      if (currentUser != null) {
-        // Get albums for current user and sort by timestamp
-        final userAlbums = await _db.getAlbumsByCreatorId(currentUser.userId);
+      // Get albums for specified user ID instead of current user
+      final userAlbums = await _db.getAlbumsByCreatorId(widget.userId);
+      if (mounted) {
         setState(() {
           _albums = userAlbums;
           _isLoading = false;
@@ -57,7 +63,18 @@ class _ProfileAlbumListState extends State<ProfileAlbumList> {
       }
     } catch (e) {
       print('Error loading albums: $e');
-      setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  // Add didUpdateWidget to handle userId changes
+  @override
+  void didUpdateWidget(ProfileAlbumList oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.userId != oldWidget.userId) {
+      _loadAlbums();
     }
   }
 
@@ -112,6 +129,8 @@ class _ProfileAlbumListState extends State<ProfileAlbumList> {
                 setState(() => _clickedIndex = index);
               },
               songListIds: album.songListIds ?? [],
+              userId: widget.userId,
+              pageName: widget.pageName,
             );
           },
         );
@@ -138,6 +157,8 @@ class ProfileAlbumListItem extends StatefulWidget {
   final bool isClicked;
   final Function(int) onItemTapped;
   final List<String>? songListIds;
+  final String userId;
+  final String pageName;
 
   const ProfileAlbumListItem({
     super.key,
@@ -157,6 +178,8 @@ class ProfileAlbumListItem extends StatefulWidget {
     required this.isClicked,
     required this.onItemTapped,
     required this.songListIds,
+    required this.userId,
+    required this.pageName,
   });
 
   @override
@@ -342,22 +365,53 @@ class _ProfileAlbumListItemState extends State<ProfileAlbumListItem> {
               fontSize: smallFontSize,
             ),
           ),
-          GestureDetector(
-            onTap: () {
-              Provider.of<WidgetStateProvider1>(context, listen: false)
-                  .changeWidget(
-                PersonalProfileContainer(userId: widget.creatorId),
-                'Profile Container',
-              );
-            },
-            child: Text(
-              widget.artistName,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: quaternaryTextColor,
-                fontWeight: mediumWeight,
-                fontSize: microFontSize,
-              ),
+          IntrinsicWidth(
+            child: FutureBuilder<User?>(
+              future: DatabaseHelper.instance.getCurrentUser(),
+              builder: (context, snapshot) {
+                return RichText(
+                  text: TextSpan(
+                    text: widget.artistName,
+                    style: const TextStyle(
+                      color: quaternaryTextColor,
+                      fontWeight: mediumWeight,
+                      fontSize: microFontSize,
+                    ),
+                    recognizer: TapGestureRecognizer()
+                      ..onTap = () {
+                        // Check if we're already in OtherProfileContainer
+                        if (widget.pageName == "OtherProfileContainer") {
+                          // If the clicked artist is the same as the current profile, do nothing
+                          if (widget.userId == widget.creatorId) {
+                            return;
+                          }
+                        }
+
+                        // Always navigate to OtherProfileContainer when clicking artist name
+                        // in song list unless it's the current user
+                        if (snapshot.hasData &&
+                            snapshot.data?.userId == widget.creatorId) {
+                          // Jika creator adalah current user, navigasi ke PersonalProfileContainer
+                          Provider.of<WidgetStateProvider1>(context,
+                                  listen: false)
+                              .changeWidget(
+                            PersonalProfileContainer(userId: widget.creatorId),
+                            'PersonalProfileContainer',
+                          );
+                        } else {
+                          // Jika creator adalah user lain, navigasi ke OtherProfileContainer
+                          Provider.of<WidgetStateProvider1>(context,
+                                  listen: false)
+                              .changeWidget(
+                            OtherProfileContainer(userId: widget.creatorId),
+                            'OtherProfileContainer',
+                          );
+                        }
+                      },
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                );
+              },
             ),
           ),
         ],

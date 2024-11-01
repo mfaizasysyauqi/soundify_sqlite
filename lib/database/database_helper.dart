@@ -177,6 +177,105 @@ class DatabaseHelper {
 
     return await db.delete(table, where: where, whereArgs: whereArgs);
   }
+// Add these methods to your DatabaseHelper class
+
+  Future<bool> followUser(String followerId, String followedId) async {
+    try {
+      final db = await database;
+
+      // Get both users
+      final follower = await getUserById(followerId);
+      final followed = await getUserById(followedId);
+
+      if (follower == null || followed == null) return false;
+
+      return await db.transaction((txn) async {
+        // Update follower's following list
+        List<String> following = List<String>.from(follower.following);
+        if (!following.contains(followedId)) {
+          following.add(followedId);
+        }
+
+        await txn.update(
+          'users',
+          {'following': following.join(',')},
+          where: 'userId = ?',
+          whereArgs: [followerId],
+        );
+
+        // Update followed user's followers list
+        List<String> followers = List<String>.from(followed.followers);
+        if (!followers.contains(followerId)) {
+          followers.add(followerId);
+        }
+
+        await txn.update(
+          'users',
+          {'followers': followers.join(',')},
+          where: 'userId = ?',
+          whereArgs: [followedId],
+        );
+
+        return true;
+      });
+    } catch (e) {
+      print('Error following user: $e');
+      return false;
+    }
+  }
+
+  Future<bool> unfollowUser(String followerId, String followedId) async {
+    try {
+      final db = await database;
+
+      // Get both users
+      final follower = await getUserById(followerId);
+      final followed = await getUserById(followedId);
+
+      if (follower == null || followed == null) return false;
+
+      return await db.transaction((txn) async {
+        // Update follower's following list
+        List<String> following = List<String>.from(follower.following);
+        following.remove(followedId);
+
+        await txn.update(
+          'users',
+          {'following': following.join(',')},
+          where: 'userId = ?',
+          whereArgs: [followerId],
+        );
+
+        // Update followed user's followers list
+        List<String> followers = List<String>.from(followed.followers);
+        followers.remove(followerId);
+
+        await txn.update(
+          'users',
+          {'followers': followers.join(',')},
+          where: 'userId = ?',
+          whereArgs: [followedId],
+        );
+
+        return true;
+      });
+    } catch (e) {
+      print('Error unfollowing user: $e');
+      return false;
+    }
+  }
+
+  Future<bool> isFollowing(String followerId, String followedId) async {
+    try {
+      final follower = await getUserById(followerId);
+      if (follower == null) return false;
+
+      return follower.following.contains(followedId);
+    } catch (e) {
+      print('Error checking follow status: $e');
+      return false;
+    }
+  }
 
   // **************************** CRUD Operations for Songs ****************************
 
@@ -257,7 +356,7 @@ class DatabaseHelper {
     return null;
   }
 
-// Add to DatabaseHelper class
+  // In DatabaseHelper class
   Future<List<Album>> getAlbumsByCreatorId(String creatorId) async {
     final db = await database;
     final List<Map<String, dynamic>> maps = await db.query(
@@ -267,7 +366,9 @@ class DatabaseHelper {
       orderBy: 'timestamp DESC',
     );
 
-    return List.generate(maps.length, (i) => Album.fromMap(maps[i]));
+    return List.generate(maps.length, (i) {
+      return Album.fromMap(maps[i]);
+    });
   }
 
   Future<bool> toggleAlbumLike(String albumId, String userId) async {
@@ -473,8 +574,7 @@ class DatabaseHelper {
     }
     return null;
   }
-
-// Add to DatabaseHelper class
+// Di dalam class DatabaseHelper
   Future<List<Playlist>> getPlaylistsByCreatorId(String creatorId) async {
     final db = await database;
     final List<Map<String, dynamic>> maps = await db.query(
@@ -484,7 +584,9 @@ class DatabaseHelper {
       orderBy: 'timestamp DESC',
     );
 
-    return List.generate(maps.length, (i) => Playlist.fromMap(maps[i]));
+    return List.generate(maps.length, (i) {
+      return Playlist.fromMap(maps[i]);
+    });
   }
 
   Future<bool> togglePlaylistLike(String playlistId, String userId) async {

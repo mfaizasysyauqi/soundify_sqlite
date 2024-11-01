@@ -1,6 +1,6 @@
 import 'dart:async';
-import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:soundify/components/current_user_avatar.dart';
 import 'package:soundify/database/database_helper.dart';
 import 'package:soundify/provider/playlist_provider.dart';
 import 'package:soundify/provider/profile_provider.dart';
@@ -49,7 +49,6 @@ class _MainPageState extends State<MainPage> {
     super.initState();
     _loadCurrentUser();
 
-    // Panggil fetchPlaylists saat halaman diinisialisasi
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Provider.of<PlaylistProvider>(context, listen: false).fetchPlaylists();
     });
@@ -63,6 +62,14 @@ class _MainPageState extends State<MainPage> {
     setState(() {
       isSearch = currentWidgetName == "HomeContainer";
     });
+
+    // Wrap the profile loading in a post-frame callback
+    if (_currentUserId != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        Provider.of<ProfileProvider>(context, listen: false)
+            .loadUserById(_currentUserId!);
+      });
+    }
   }
 
   void navigateToHomeContainer() {
@@ -79,12 +86,21 @@ class _MainPageState extends State<MainPage> {
   }
 
   // Method untuk memuat current user dari SQLite
+  // Method untuk memuat current user dari SQLite
   Future<void> _loadCurrentUser() async {
     try {
       final user = await DatabaseHelper.instance.getCurrentUser();
-      if (user != null) {
+      if (user != null && mounted) {
         setState(() {
           _currentUserId = user.userId;
+        });
+
+        // Load user profile data after setting currentUserId
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            Provider.of<ProfileProvider>(context, listen: false)
+                .loadUserById(user.userId);
+          }
         });
       }
     } catch (e) {
@@ -725,142 +741,126 @@ class _MainPageState extends State<MainPage> {
                                     color: Colors
                                         .transparent, // Atur background ke transparent agar hanya efek klik yang terlihat
                                     child: InkWell(
-                                      borderRadius: BorderRadius.circular(20),
-                                      onTap: () {
-                                        showDialog(
-                                          context: context,
-                                          barrierColor: Colors
-                                              .transparent, // Latar belakang tidak gelap
-                                          builder: (BuildContext context) {
-                                            return Stack(
-                                              children: [
-                                                Positioned(
-                                                  top:
-                                                      73, // Jarak dari atas layar
-                                                  right:
-                                                      14, // Jarak dari ujung kanan
-                                                  child: Material(
-                                                    color: Colors
-                                                        .transparent, // Transparan agar decoration terlihat
-                                                    child: IntrinsicWidth(
-                                                      // Menjaga ukuran popup sesuai konten
-                                                      child: Container(
-                                                        padding:
-                                                            const EdgeInsets
-                                                                .all(20),
-                                                        decoration:
-                                                            BoxDecoration(
-                                                          color: tertiaryColor,
-                                                          borderRadius:
-                                                              BorderRadius.circular(
-                                                                  16), // Membuat ujung melengkung
-                                                          boxShadow: const [
-                                                            BoxShadow(
-                                                              color: Colors
-                                                                  .black26, // Warna shadow
-                                                              blurRadius:
-                                                                  10, // Ukuran blur shadow
-                                                              offset: Offset(0,
-                                                                  4), // Posisi shadow
-                                                            ),
-                                                          ],
-                                                        ),
-                                                        child: Column(
-                                                          mainAxisSize:
-                                                              MainAxisSize.min,
-                                                          crossAxisAlignment:
-                                                              CrossAxisAlignment
-                                                                  .start,
-                                                          children: [
-                                                            TextButton(
-                                                              onPressed: () {
-                                                                setState(() {
-                                                                  if (_currentUserId !=
-                                                                      null) {
-                                                                    Provider.of<WidgetStateProvider1>(
-                                                                            context,
-                                                                            listen:
-                                                                                false)
-                                                                        .changeWidget(
-                                                                      PersonalProfileContainer(
-                                                                        userId:
-                                                                            _currentUserId!, // Gunakan _currentUserId
-                                                                      ),
-                                                                      'Profile Container',
-                                                                    );
+                                        borderRadius: BorderRadius.circular(20),
+                                        onTap: () {
+                                          showDialog(
+                                            context: context,
+                                            barrierColor: Colors
+                                                .transparent, // Latar belakang tidak gelap
+                                            builder: (BuildContext context) {
+                                              return Stack(
+                                                children: [
+                                                  Positioned(
+                                                    top:
+                                                        73, // Jarak dari atas layar
+                                                    right:
+                                                        14, // Jarak dari ujung kanan
+                                                    child: Material(
+                                                      color: Colors
+                                                          .transparent, // Transparan agar decoration terlihat
+                                                      child: IntrinsicWidth(
+                                                        // Menjaga ukuran popup sesuai konten
+                                                        child: Container(
+                                                          padding:
+                                                              const EdgeInsets
+                                                                  .all(20),
+                                                          decoration:
+                                                              BoxDecoration(
+                                                            color:
+                                                                tertiaryColor,
+                                                            borderRadius:
+                                                                BorderRadius
+                                                                    .circular(
+                                                                        16), // Membuat ujung melengkung
+                                                            boxShadow: const [
+                                                              BoxShadow(
+                                                                color: Colors
+                                                                    .black26, // Warna shadow
+                                                                blurRadius:
+                                                                    10, // Ukuran blur shadow
+                                                                offset: Offset(
+                                                                    0,
+                                                                    4), // Posisi shadow
+                                                              ),
+                                                            ],
+                                                          ),
+                                                          child: Column(
+                                                            mainAxisSize:
+                                                                MainAxisSize
+                                                                    .min,
+                                                            crossAxisAlignment:
+                                                                CrossAxisAlignment
+                                                                    .start,
+                                                            children: [
+                                                              TextButton(
+                                                                onPressed: () {
+                                                                  setState(() {
+                                                                    if (_currentUserId !=
+                                                                        null) {
+                                                                      Provider.of<WidgetStateProvider1>(
+                                                                              context,
+                                                                              listen: false)
+                                                                          .changeWidget(
+                                                                        PersonalProfileContainer(
+                                                                          userId:
+                                                                              _currentUserId!, // Gunakan _currentUserId
+                                                                        ),
+                                                                        'Profile Container',
+                                                                      );
 
-                                                                    activeWidget2 =
-                                                                        const ShowDetailSong();
-                                                                  }
-                                                                });
-                                                              },
-                                                              child: const Text(
-                                                                'Profile',
-                                                                style:
-                                                                    TextStyle(
-                                                                  color:
-                                                                      primaryTextColor,
-                                                                  fontWeight:
-                                                                      FontWeight
-                                                                          .bold,
+                                                                      activeWidget2 =
+                                                                          const ShowDetailSong();
+                                                                    }
+                                                                  });
+                                                                },
+                                                                child:
+                                                                    const Text(
+                                                                  'Profile',
+                                                                  style:
+                                                                      TextStyle(
+                                                                    color:
+                                                                        primaryTextColor,
+                                                                    fontWeight:
+                                                                        FontWeight
+                                                                            .bold,
+                                                                  ),
                                                                 ),
                                                               ),
-                                                            ),
-                                                            const Divider(
-                                                              color:
-                                                                  primaryTextColor,
-                                                            ),
-                                                            TextButton(
-                                                              onPressed:
-                                                                  _logout,
-                                                              child: const Text(
-                                                                "Log Out",
-                                                                style:
-                                                                    TextStyle(
-                                                                  color: Colors
-                                                                      .redAccent, // Sesuaikan warna teks
-                                                                  fontWeight:
-                                                                      FontWeight
-                                                                          .bold,
+                                                              const Divider(
+                                                                color:
+                                                                    primaryTextColor,
+                                                              ),
+                                                              TextButton(
+                                                                onPressed:
+                                                                    _logout,
+                                                                child:
+                                                                    const Text(
+                                                                  "Log Out",
+                                                                  style:
+                                                                      TextStyle(
+                                                                    color: Colors
+                                                                        .redAccent, // Sesuaikan warna teks
+                                                                    fontWeight:
+                                                                        FontWeight
+                                                                            .bold,
+                                                                  ),
                                                                 ),
                                                               ),
-                                                            ),
-                                                          ],
+                                                            ],
+                                                          ),
                                                         ),
                                                       ),
                                                     ),
                                                   ),
-                                                ),
-                                              ],
-                                            );
-                                          },
-                                        );
-                                      },
-                                      child: CircleAvatar(
-                                        radius: 20,
-                                        backgroundColor: (profileProvider
-                                                .profileImageUrl.isEmpty)
-                                            ? primaryTextColor
-                                            : tertiaryColor,
-                                        backgroundImage: profileProvider
-                                                    .profileImageUrl
-                                                    .isNotEmpty &&
-                                                File(profileProvider
-                                                        .profileImageUrl)
-                                                    .existsSync()
-                                            ? FileImage(File(profileProvider
-                                                .profileImageUrl))
-                                            : null,
-                                        child: (profileProvider
-                                                    .profileImageUrl.isEmpty ||
-                                                !File(profileProvider
-                                                        .profileImageUrl)
-                                                    .existsSync())
-                                            ? Icon(Icons.person,
-                                                color: primaryColor, size: 20)
-                                            : null,
-                                      ),
-                                    ),
+                                                ],
+                                              );
+                                            },
+                                          );
+                                        },
+                                        child: const CurrentUserAvatar(
+                                          radius: 20,
+                                          iconSize: 20,
+                                        )),
                                   ),
                                 ],
                               ),
