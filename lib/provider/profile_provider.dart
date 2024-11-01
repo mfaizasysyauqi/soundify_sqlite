@@ -10,6 +10,7 @@ class ProfileProvider with ChangeNotifier {
   User? _currentUser;
   bool _isLoading = false;
   bool _disposed = false;
+  String? currentLoadedUserId; // Tambahkan variabel ini
 
   // Public getters
   User? get currentUser => _currentUser;
@@ -37,35 +38,62 @@ class ProfileProvider with ChangeNotifier {
     }
   }
 
-  Future<void> updateFollowStatus(
-    String currentUserId,
-    String targetUserId,
-    bool isFollowing,
-  ) async {
-    if (_disposed) return;
+  void clearCurrentUser() {
+    _currentUser = null;
+    currentLoadedUserId = null;
+    if (!_disposed) {
+      notifyListeners();
+    }
+  }
 
+  Future<void> refreshCurrentUser() async {
+    if (_currentUser != null && !_disposed && currentLoadedUserId != null) {
+      try {
+        final refreshedUser =
+            await DatabaseHelper.instance.getUserById(currentLoadedUserId!);
+        if (refreshedUser != null && !_disposed) {
+          _currentUser = refreshedUser;
+          notifyListeners();
+        }
+      } catch (e) {
+        print('Error refreshing current user: $e');
+      }
+    }
+  }
+
+  // Tambahkan method baru untuk memperbarui data followers/following
+  Future<void> updateFollowerCount(String userId) async {
     try {
-      await updateFollowers(currentUserId, isFollowing);
-      await loadUserById(targetUserId);
+      if (currentLoadedUserId == userId) {
+        final updatedUser = await DatabaseHelper.instance.getUserById(userId);
+        if (updatedUser != null && !_disposed) {
+          _currentUser = updatedUser;
+          notifyListeners();
+        }
+      }
     } catch (e) {
-      print('Error updating follow status: $e');
+      print('Error updating follower count: $e');
     }
   }
 
   Future<void> loadUserById(String userId) async {
+    // Tambahkan pengecekan untuk mencegah reload yang tidak perlu
+    if (currentLoadedUserId == userId && _currentUser != null) {
+      return;
+    }
+
     if (_disposed || _isLoading) return;
 
     try {
       _isLoading = true;
-      // Notify only once at the start of loading
       notifyListeners();
 
       final user = await DatabaseHelper.instance.getUserById(userId);
 
       if (!_disposed) {
         _currentUser = user;
+        currentLoadedUserId = userId; // Set ID user yang sedang dimuat
         _isLoading = false;
-        // Notify once after the data is loaded
         notifyListeners();
       }
     } catch (e) {
@@ -74,13 +102,6 @@ class ProfileProvider with ChangeNotifier {
         _isLoading = false;
         notifyListeners();
       }
-    }
-  }
-
-  // Add a method to refresh the current user's data
-  Future<void> refreshCurrentUser() async {
-    if (_currentUser != null) {
-      await loadUserById(_currentUser!.userId);
     }
   }
 

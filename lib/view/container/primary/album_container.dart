@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -26,7 +25,6 @@ class AlbumContainer extends StatefulWidget {
 }
 
 OverlayEntry? _overlayEntry;
-Uint8List? _selectedImage;
 
 final TextEditingController _albumNameController = TextEditingController();
 final TextEditingController _albumDescriptionController =

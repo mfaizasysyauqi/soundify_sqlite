@@ -12,6 +12,8 @@ import 'package:soundify/view/container/secondary/menu/profile_menu.dart';
 import 'package:soundify/view/style/style.dart';
 import 'package:provider/provider.dart';
 import 'package:soundify/view/widget/profile/profile_album_list.dart';
+import 'package:soundify/view/widget/profile/profile_followers_list.dart';
+import 'package:soundify/view/widget/profile/profile_following_list.dart';
 import 'package:soundify/view/widget/profile/profile_playlist_list.dart';
 import 'package:soundify/view/widget/song_list.dart';
 
@@ -46,11 +48,45 @@ class _OtherProfileContainerState extends State<OtherProfileContainer> {
   @override
   void initState() {
     super.initState();
+    _mounted = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_mounted) {
-        _initializeData();
+        _initializeAsync();
       }
     });
+  }
+
+  Future<void> _initializeAsync() async {
+    if (!mounted) return;
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      if (!_isProviderInitialized) {
+        _profileProvider = Provider.of<ProfileProvider>(context, listen: false);
+        _isProviderInitialized = true;
+        await _profileProvider.loadUserById(widget.userId);
+        await _checkIfFollow();
+      }
+      await _checkUserContent();
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  @override
+  void didUpdateWidget(OtherProfileContainer oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.userId != oldWidget.userId) {
+      _resetState();
+      _initializeAsync();
+    }
   }
 
   @override
@@ -66,9 +102,27 @@ class _OtherProfileContainerState extends State<OtherProfileContainer> {
 
   void _onProfileUpdate() {
     if (_mounted) {
-      setState(() {
-        // Update local state if needed
-      });
+      refreshProfile();
+    }
+  }
+
+  Future<void> refreshProfile() async {
+    if (!mounted || !_isProviderInitialized) return;
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      await _profileProvider.loadUserById(widget.userId);
+      await _checkIfFollow();
+      await _checkUserContent();
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -369,21 +423,19 @@ class _OtherProfileContainerState extends State<OtherProfileContainer> {
       bool success;
 
       if (_isFollowing) {
+        // Only update the follow relationship in the database
         success = await _db.unfollowUser(currentUser.userId, widget.userId);
       } else {
         success = await _db.followUser(currentUser.userId, widget.userId);
       }
 
       if (success && _mounted) {
-        await _profileProvider.updateFollowStatus(
-          currentUser.userId,
-          widget.userId,
-          !_isFollowing,
-        );
-
         setState(() {
           _isFollowing = !_isFollowing;
         });
+
+        // Only refresh the profile we're viewing
+        await _profileProvider.refreshCurrentUser();
       }
     } catch (e) {
       print('Error handling follow/unfollow: $e');
@@ -542,10 +594,54 @@ class _OtherProfileContainerState extends State<OtherProfileContainer> {
                   color: primaryTextColor,
                   fontSize: mediumFontSize,
                   fontWeight: FontWeight.bold)),
-          Text(
-              'Followers: ${profileProvider.followers.length} | Following: ${profileProvider.following.length} | Role: ${profileProvider.currentUser?.role ?? ""}',
-              style: const TextStyle(
-                  color: primaryTextColor, fontSize: smallFontSize)),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              GestureDetector(
+                onTap: () => showFollowersModal(
+                  context,
+                ),
+                child: Text(
+                  'Followers: ${profileProvider.followers.length}',
+                  style: const TextStyle(
+                    color: primaryTextColor,
+                    fontSize: smallFontSize,
+                  ),
+                ),
+              ),
+              Text(
+                ' | ',
+                style: const TextStyle(
+                  color: primaryTextColor,
+                  fontSize: smallFontSize,
+                ),
+              ),
+              GestureDetector(
+                onTap: () => showFollowingModal(context),
+                child: Text(
+                  'Following: ${profileProvider.following.length}',
+                  style: const TextStyle(
+                    color: primaryTextColor,
+                    fontSize: smallFontSize,
+                  ),
+                ),
+              ),
+              Text(
+                ' | ',
+                style: const TextStyle(
+                  color: primaryTextColor,
+                  fontSize: smallFontSize,
+                ),
+              ),
+              Text(
+                'Role: ${profileProvider.currentUser?.role ?? ""}',
+                style: const TextStyle(
+                  color: primaryTextColor,
+                  fontSize: smallFontSize,
+                ),
+              ),
+            ],
+          ),
           if (profileProvider.bio.isNotEmpty)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 90.0),
@@ -644,10 +740,52 @@ class _OtherProfileContainerState extends State<OtherProfileContainer> {
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              Text(
-                  'Followers: ${profileProvider.followers.length} | Following: ${profileProvider.following.length} | Role: ${profileProvider.currentUser?.role ?? ""}',
-                  style: const TextStyle(
-                      color: primaryTextColor, fontSize: smallFontSize)),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.start,
+                children: [
+                  GestureDetector(
+                    onTap: () => showFollowersModal(context),
+                    child: Text(
+                      'Followers: ${profileProvider.followers.length}',
+                      style: const TextStyle(
+                        color: primaryTextColor,
+                        fontSize: smallFontSize,
+                      ),
+                    ),
+                  ),
+                  Text(
+                    ' | ',
+                    style: const TextStyle(
+                      color: primaryTextColor,
+                      fontSize: smallFontSize,
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: () => showFollowingModal(context),
+                    child: Text(
+                      'Following: ${profileProvider.following.length}',
+                      style: const TextStyle(
+                        color: primaryTextColor,
+                        fontSize: smallFontSize,
+                      ),
+                    ),
+                  ),
+                  Text(
+                    ' | ',
+                    style: const TextStyle(
+                      color: primaryTextColor,
+                      fontSize: smallFontSize,
+                    ),
+                  ),
+                  Text(
+                    'Role: ${profileProvider.currentUser?.role ?? ""}',
+                    style: const TextStyle(
+                      color: primaryTextColor,
+                      fontSize: smallFontSize,
+                    ),
+                  ),
+                ],
+              ),
               if (profileProvider.bio.isNotEmpty)
                 IntrinsicWidth(
                   child: RichText(
@@ -1142,18 +1280,6 @@ class _OtherProfileContainerState extends State<OtherProfileContainer> {
   Widget? _cachedSongList;
   Widget? _cachedPlaylistList;
   Widget? _cachedAlbumList;
-
-  // This method will be called when widget.userId changes
-  @override
-  void didUpdateWidget(covariant OtherProfileContainer oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (widget.userId != oldWidget.userId) {
-      _resetState();
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _initializeData();
-      });
-    }
-  }
 
   void _resetState() {
     setState(() {

@@ -574,6 +574,7 @@ class DatabaseHelper {
     }
     return null;
   }
+
 // Di dalam class DatabaseHelper
   Future<List<Playlist>> getPlaylistsByCreatorId(String creatorId) async {
     final db = await database;

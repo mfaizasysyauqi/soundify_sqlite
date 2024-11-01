@@ -12,6 +12,8 @@ import 'package:soundify/view/container/secondary/menu/profile_menu.dart';
 import 'package:soundify/view/style/style.dart';
 import 'package:provider/provider.dart';
 import 'package:soundify/view/widget/profile/profile_album_list.dart';
+import 'package:soundify/view/widget/profile/profile_followers_list.dart';
+import 'package:soundify/view/widget/profile/profile_following_list.dart';
 import 'package:soundify/view/widget/profile/profile_playlist_list.dart';
 import 'package:soundify/view/widget/song_list.dart';
 
@@ -31,6 +33,9 @@ class PersonalProfileContainer extends StatefulWidget {
 OverlayEntry? _overlayEntry;
 
 class _PersonalProfileContainerState extends State<PersonalProfileContainer> {
+  bool _mounted = true;
+  late ProfileProvider _profileProvider; // Keep it non-nullable but late
+  bool _isProviderInitialized = false; // Add flag to track initialization
   final DatabaseHelper _db = DatabaseHelper.instance;
   bool _isSongClicked = true;
   bool _isHaveSong = true;
@@ -43,10 +48,74 @@ class _PersonalProfileContainerState extends State<PersonalProfileContainer> {
   @override
   void initState() {
     super.initState();
-    _checkIfFollow();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _initializeData();
+    _initializeAsync();
+  }
+
+  Future<void> _initializeAsync() async {
+    if (!mounted) return;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      await _initializeData();
     });
+  }
+
+  // Improved dependency management
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_isProviderInitialized && mounted) {
+      _profileProvider = Provider.of<ProfileProvider>(context, listen: false);
+      _isProviderInitialized = true;
+      _profileProvider.addListener(_onProfileUpdate);
+      _checkIfFollow();
+    }
+  }
+
+  // Improved disposal
+  @override
+  void dispose() {
+    if (_isProviderInitialized) {
+      _profileProvider.removeListener(_onProfileUpdate);
+    }
+    _overlayEntry?.remove();
+    _overlayEntry = null;
+    super.dispose();
+  }
+
+  Future<void> _checkIfFollow() async {
+    try {
+      User? currentUser = await _db.getCurrentUser();
+      if (currentUser == null || !_mounted) return;
+
+      if (_mounted) {
+        // Refresh provider data
+        await _profileProvider.loadUserById(widget.userId);
+      }
+    } catch (e) {
+      print('Error checking follow status: $e');
+    }
+  }
+
+  // Tambahkan method ini
+  // Improved refresh method with proper mounted checks
+  Future<void> refreshParentProfile() async {
+    if (!mounted) return;
+
+    try {
+      await _profileProvider.refreshCurrentUser();
+      if (mounted) {
+        setState(() {});
+      }
+    } catch (e) {
+      print('Error refreshing profile: $e');
+    }
+  }
+
+  // Update _onProfileUpdate
+  void _onProfileUpdate() {
+    if (!mounted) return;
+    refreshParentProfile();
   }
 
   Future<void> _showProfileBioModal(BuildContext context) async {
@@ -210,13 +279,15 @@ class _PersonalProfileContainerState extends State<PersonalProfileContainer> {
     }
   }
 
+  // Add proper error handling for overlays
   void _closeModal() {
     if (_overlayEntry != null) {
-      _overlayEntry!.remove(); // Hapus overlay
+      _overlayEntry?.remove();
       _overlayEntry = null;
     }
   }
 
+  // Improved data initialization
   Future<void> _initializeData() async {
     if (!mounted) return;
 
@@ -225,10 +296,12 @@ class _PersonalProfileContainerState extends State<PersonalProfileContainer> {
     });
 
     try {
-      final profileProvider =
-          Provider.of<ProfileProvider>(context, listen: false);
-      await profileProvider.loadUserById(widget.userId);
-      await _checkUserContent();
+      await Future.wait([
+        _profileProvider.loadUserById(widget.userId),
+        _checkUserContent(),
+      ]);
+    } catch (e) {
+      print('Error initializing data: $e');
     } finally {
       if (mounted) {
         setState(() {
@@ -246,25 +319,6 @@ class _PersonalProfileContainerState extends State<PersonalProfileContainer> {
     ]);
   }
 
-  Future<void> _checkIfFollow() async {
-    try {
-      // Get current user
-      User? currentUser = await _db.getCurrentUser();
-      if (currentUser == null) return;
-
-      // Get user being followed
-      User? userToFollow = await _db.getUserById(widget.userId);
-      if (userToFollow == null) return;
-
-      if (!mounted) return;
-      setState(() {
-        // Check if current user is in followers list
-      });
-    } catch (e) {
-      print('Error checking follow status: $e');
-    }
-  }
-
   Future<void> checkIfUserHasSong() async {
     try {
       final songs = await _db.getSongsByArtist(widget.userId);
@@ -279,10 +333,10 @@ class _PersonalProfileContainerState extends State<PersonalProfileContainer> {
 
   Future<void> checkIfUserHasAlbum() async {
     try {
-      final album = await _db.getAlbumByCreatorId(widget.userId);
+      final albums = await _db.getAlbumByCreatorId(widget.userId);
       if (!mounted) return;
       setState(() {
-        _isHaveAlbum = album != null;
+        _isHaveAlbum = albums != null;
       });
     } catch (e) {
       print('Error checking albums: $e');
@@ -397,7 +451,7 @@ class _PersonalProfileContainerState extends State<PersonalProfileContainer> {
                   ),
                 ];
               },
-              body: _buildList(),
+              body: _getCachedList(),
             ),
           ),
         ),
@@ -455,10 +509,56 @@ class _PersonalProfileContainerState extends State<PersonalProfileContainer> {
                   color: primaryTextColor,
                   fontSize: mediumFontSize,
                   fontWeight: FontWeight.bold)),
-          Text(
-              'Followers: ${profileProvider.followers.length} | Following: ${profileProvider.following.length} | Role: ${profileProvider.currentUser?.role ?? ""}',
-              style: const TextStyle(
-                  color: primaryTextColor, fontSize: smallFontSize)),
+          // personal_profile_container.dart
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              GestureDetector(
+                onTap: () => showFollowersModal(
+                  context,
+                ),
+                child: Text(
+                  'Followers: ${profileProvider.followers.length}',
+                  style: const TextStyle(
+                    color: primaryTextColor,
+                    fontSize: smallFontSize,
+                  ),
+                ),
+              ),
+              Text(
+                ' | ',
+                style: const TextStyle(
+                  color: primaryTextColor,
+                  fontSize: smallFontSize,
+                ),
+              ),
+              GestureDetector(
+                onTap: () => showFollowingModal(context),
+                child: Text(
+                  'Following: ${profileProvider.following.length}',
+                  style: const TextStyle(
+                    color: primaryTextColor,
+                    fontSize: smallFontSize,
+                  ),
+                ),
+              ),
+              Text(
+                ' | ',
+                style: const TextStyle(
+                  color: primaryTextColor,
+                  fontSize: smallFontSize,
+                ),
+              ),
+              Text(
+                'Role: ${profileProvider.currentUser?.role ?? ""}',
+                style: const TextStyle(
+                  color: primaryTextColor,
+                  fontSize: smallFontSize,
+                ),
+              ),
+            ],
+          ),
+
           if (profileProvider.bio.isNotEmpty)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 90.0),
@@ -536,10 +636,52 @@ class _PersonalProfileContainerState extends State<PersonalProfileContainer> {
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              Text(
-                  'Followers: ${profileProvider.followers.length} | Following: ${profileProvider.following.length} | Role: ${profileProvider.currentUser?.role ?? ""}',
-                  style: const TextStyle(
-                      color: primaryTextColor, fontSize: smallFontSize)),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.start,
+                children: [
+                  GestureDetector(
+                    onTap: () => showFollowersModal(context),
+                    child: Text(
+                      'Followers: ${profileProvider.followers.length}',
+                      style: const TextStyle(
+                        color: primaryTextColor,
+                        fontSize: smallFontSize,
+                      ),
+                    ),
+                  ),
+                  Text(
+                    ' | ',
+                    style: const TextStyle(
+                      color: primaryTextColor,
+                      fontSize: smallFontSize,
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: () => showFollowingModal(context),
+                    child: Text(
+                      'Following: ${profileProvider.following.length}',
+                      style: const TextStyle(
+                        color: primaryTextColor,
+                        fontSize: smallFontSize,
+                      ),
+                    ),
+                  ),
+                  Text(
+                    ' | ',
+                    style: const TextStyle(
+                      color: primaryTextColor,
+                      fontSize: smallFontSize,
+                    ),
+                  ),
+                  Text(
+                    'Role: ${profileProvider.currentUser?.role ?? ""}',
+                    style: const TextStyle(
+                      color: primaryTextColor,
+                      fontSize: smallFontSize,
+                    ),
+                  ),
+                ],
+              ),
               if (profileProvider.bio.isNotEmpty)
                 IntrinsicWidth(
                   child: RichText(
@@ -985,33 +1127,32 @@ class _PersonalProfileContainerState extends State<PersonalProfileContainer> {
     );
   }
 
-  Widget _buildList() {
+  // Improved cache management
+  Widget _getCachedList() {
+    if (!mounted) return const SizedBox.shrink();
+
     if (_isLoading) {
       return const Center(
-        child: CircularProgressIndicator(color: primaryTextColor),
-      );
+          child: CircularProgressIndicator(color: primaryTextColor));
     }
 
     if (_isSongClicked && _isHaveSong) {
-      _cachedSongList ??= SongList(
+      return _cachedSongList ??= SongList(
         userId: widget.userId,
         pageName: "PersonalProfileContainer",
         playlistId: "",
         albumId: "",
       );
-      return _cachedSongList!;
     } else if (_isPlaylistClicked && _isHavePlaylist) {
-      _cachedPlaylistList ??= ProfilePlaylistList(
+      return _cachedPlaylistList ??= ProfilePlaylistList(
         userId: widget.userId,
         pageName: "PersonalProfileContainer",
       );
-      return _cachedPlaylistList!;
     } else if (_isAlbumClicked && _isHaveAlbum) {
-      _cachedAlbumList ??= ProfileAlbumList(
+      return _cachedAlbumList ??= ProfileAlbumList(
         userId: widget.userId,
         pageName: "PersonalProfileContainer",
       );
-      return _cachedAlbumList!;
     }
 
     return const SizedBox.shrink();
@@ -1037,17 +1178,18 @@ class _PersonalProfileContainerState extends State<PersonalProfileContainer> {
 
   // This method will be called when widget.userId changes
   @override
-  void didUpdateWidget(covariant PersonalProfileContainer oldWidget) {
+  void didUpdateWidget(PersonalProfileContainer oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.userId != oldWidget.userId) {
       _resetState();
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _initializeData();
-      });
+      _initializeAsync();
     }
   }
 
+  // Improved state reset
   void _resetState() {
+    if (!mounted) return;
+
     setState(() {
       _isLoading = true;
       _isHaveSong = false;
