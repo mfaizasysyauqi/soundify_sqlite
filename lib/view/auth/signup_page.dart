@@ -66,7 +66,7 @@ class _SignUpPageState extends State<SignUpPage> {
         profileImageUrl: '',
         bioImageUrl: '',
         bio: '',
-        role: 'user',
+        role: 'Free User',
         followers: [],
         following: [],
         userLikedSongs: [],
@@ -74,6 +74,7 @@ class _SignUpPageState extends State<SignUpPage> {
         userLikedPlaylists: [],
         lastListenedSongId: '',
         lastVolumeLevel: 0.5,
+        premiumExpiryDate: '',
       );
 
       // Save to SQLite

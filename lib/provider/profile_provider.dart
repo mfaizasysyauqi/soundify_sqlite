@@ -16,7 +16,11 @@ class ProfileProvider with ChangeNotifier {
   User? get currentUser => _currentUser;
   bool get isLoading => _isLoading;
 
+  // Tambahkan field untuk current user
+  String _currentUserProfileImageUrl = '';
+
   // User property getters
+  String get userId => currentLoadedUserId ?? '';
   String get username => _currentUser?.username ?? '';
   String get fullName => _currentUser?.fullName ?? '';
   String get profileImageUrl => _currentUser?.profileImageUrl ?? '';
@@ -24,6 +28,9 @@ class ProfileProvider with ChangeNotifier {
   String get bio => _currentUser?.bio ?? '';
   List<String> get followers => _currentUser?.followers ?? [];
   List<String> get following => _currentUser?.following ?? [];
+
+  // Tambahkan getter untuk current user profile image
+  String get currentUserProfileImageUrl => _currentUserProfileImageUrl;
 
   @override
   void dispose() {
@@ -35,6 +42,74 @@ class ProfileProvider with ChangeNotifier {
   void notifyListeners() {
     if (!_disposed) {
       super.notifyListeners();
+    }
+  }
+
+  // Method untuk load current user profile image
+  Future<void> loadCurrentUserProfileImage() async {
+    if (_disposed) return;
+    try {
+      final currentUser = await DatabaseHelper.instance.getCurrentUser();
+      if (currentUser != null && !_disposed) {
+        _currentUserProfileImageUrl = currentUser.profileImageUrl;
+        notifyListeners();
+      }
+    } catch (e) {
+      print('Error loading current user profile image: $e');
+    }
+  }
+
+  // Update existing loadCurrentUser to also update currentUserProfileImageUrl
+  Future<void> loadCurrentUser() async {
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      final user = await DatabaseHelper.instance.getCurrentUser();
+      _currentUser = user;
+      if (user != null) {
+        _currentUserProfileImageUrl = user.profileImageUrl;
+      }
+    } catch (e) {
+      print('Error loading current user: $e');
+    }
+
+    _isLoading = false;
+    notifyListeners();
+  }
+
+  // Method untuk set userId dan load data user
+  Future<void> setUserId(String id) async {
+    if (currentLoadedUserId == id && _currentUser != null) return;
+    await loadUserById(id);
+  }
+
+  Future<void> loadUserById(String userId) async {
+    // Tambahkan pengecekan untuk mencegah reload yang tidak perlu
+    if (currentLoadedUserId == userId && _currentUser != null) {
+      return;
+    }
+
+    if (_disposed || _isLoading) return;
+
+    try {
+      _isLoading = true;
+      notifyListeners();
+
+      final user = await DatabaseHelper.instance.getUserById(userId);
+
+      if (!_disposed) {
+        _currentUser = user;
+        currentLoadedUserId = userId;
+        _isLoading = false;
+        notifyListeners();
+      }
+    } catch (e) {
+      print('Error loading user: $e');
+      if (!_disposed) {
+        _isLoading = false;
+        notifyListeners();
+      }
     }
   }
 
@@ -73,35 +148,6 @@ class ProfileProvider with ChangeNotifier {
       }
     } catch (e) {
       print('Error updating follower count: $e');
-    }
-  }
-
-  Future<void> loadUserById(String userId) async {
-    // Tambahkan pengecekan untuk mencegah reload yang tidak perlu
-    if (currentLoadedUserId == userId && _currentUser != null) {
-      return;
-    }
-
-    if (_disposed || _isLoading) return;
-
-    try {
-      _isLoading = true;
-      notifyListeners();
-
-      final user = await DatabaseHelper.instance.getUserById(userId);
-
-      if (!_disposed) {
-        _currentUser = user;
-        currentLoadedUserId = userId; // Set ID user yang sedang dimuat
-        _isLoading = false;
-        notifyListeners();
-      }
-    } catch (e) {
-      print('Error loading user: $e');
-      if (!_disposed) {
-        _isLoading = false;
-        notifyListeners();
-      }
     }
   }
 
@@ -167,21 +213,7 @@ class ProfileProvider with ChangeNotifier {
     }
   }
 
-  Future<void> loadCurrentUser() async {
-    _isLoading = true;
-    notifyListeners();
-
-    try {
-      final user = await DatabaseHelper.instance.getCurrentUser();
-      _currentUser = user;
-    } catch (e) {
-      print('Error loading current user: $e');
-    }
-
-    _isLoading = false;
-    notifyListeners();
-  }
-
+  // Update the profile update methods to handle currentUserProfileImageUrl
   Future<void> updateProfile({
     String? username,
     String? fullName,
@@ -202,6 +234,13 @@ class ProfileProvider with ChangeNotifier {
 
       await DatabaseHelper.instance.updateUser(updatedUser);
       _currentUser = updatedUser;
+      
+      // Update currentUserProfileImageUrl if this is the current user
+      final currentUser = await DatabaseHelper.instance.getCurrentUser();
+      if (currentUser?.userId == updatedUser.userId) {
+        _currentUserProfileImageUrl = updatedUser.profileImageUrl;
+      }
+      
       notifyListeners();
     } catch (e) {
       print('Error updating profile: $e');

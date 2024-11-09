@@ -16,6 +16,7 @@ class HomeContainer extends StatefulWidget {
 
 class _HomeContainerState extends State<HomeContainer> {
   String? userId;
+  String? _currentUserRole;
 
   @override
   void initState() {
@@ -26,8 +27,20 @@ class _HomeContainerState extends State<HomeContainer> {
             .changeWidget(const ShowDetailSong(), 'ShowDetailSong');
       }
     });
+    _loadUserRole();
   }
 
+  // Tambahkan method untuk memuat role user
+  Future<void> _loadUserRole() async {
+    if (mounted) {
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final role = await authProvider.getCurrentUserRole(); // Assumed method in AuthProvider
+      setState(() {
+        _currentUserRole = role;
+      });
+    }
+  }
+  
   @override
   Widget build(BuildContext context) {
     double screenWidth = MediaQuery.of(context).size.width;
@@ -93,7 +106,8 @@ class _HomeContainerState extends State<HomeContainer> {
                       TableRow(
                         children: [
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                            padding:
+                                const EdgeInsets.symmetric(horizontal: 8.0),
                             decoration: BoxDecoration(
                               border: Border.all(
                                   color: transparentColor), // Border per sel
@@ -108,7 +122,8 @@ class _HomeContainerState extends State<HomeContainer> {
                             ),
                           ),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                            padding:
+                                const EdgeInsets.symmetric(horizontal: 8.0),
                             decoration: BoxDecoration(
                               border: Border.all(
                                   color: transparentColor), // Border per sel
@@ -124,7 +139,8 @@ class _HomeContainerState extends State<HomeContainer> {
                           ),
                           if (screenWidth > 1280)
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 8.0),
                               decoration: BoxDecoration(
                                 border: Border.all(
                                     color: transparentColor), // Border per sel
@@ -142,7 +158,8 @@ class _HomeContainerState extends State<HomeContainer> {
                             const SizedBox.shrink(), // Kosong jika layar kecil
                           if (screenWidth > 1480)
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 8.0),
                               decoration: BoxDecoration(
                                 border: Border.all(
                                     color: transparentColor), // Border per sel
@@ -165,10 +182,12 @@ class _HomeContainerState extends State<HomeContainer> {
                                 width: 45,
                               ),
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 8.0),
                                 decoration: BoxDecoration(
                                   border: Border.all(
-                                      color: transparentColor), // Border per sel
+                                      color:
+                                          transparentColor), // Border per sel
                                 ),
                                 child: const SizedBox(
                                   width: 50,
@@ -205,6 +224,18 @@ class _HomeContainerState extends State<HomeContainer> {
                     albumId: "",
                   ),
                 ),
+                if (_currentUserRole == 'Free User') ...[
+                Container(
+                  height: 60,
+                  decoration: BoxDecoration(
+                    color: tertiaryColor,
+                    image: DecorationImage(
+                      image: AssetImage("assets/contoh_iklan.png"),
+                      fit: BoxFit
+                          .contain, // Atur sesuai kebutuhan (cover, contain, fill, dll)
+                    ),
+                  ),
+                )]
               ],
             ),
           ),

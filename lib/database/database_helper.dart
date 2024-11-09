@@ -129,7 +129,8 @@ class DatabaseHelper {
       userLikedAlbums TEXT,
       userLikedPlaylists TEXT,
       lastListenedSongId TEXT,
-      lastVolumeLevel REAL
+      lastVolumeLevel REAL,
+      premiumExpiryDate TEXT
     )
   ''');
 

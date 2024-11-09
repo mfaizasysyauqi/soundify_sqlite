@@ -14,7 +14,7 @@ OverlayEntry? _overlayEntry;
 final DatabaseHelper _db = DatabaseHelper.instance;
 bool _mounted = true;
 
-Future<void> showFollowersModal(BuildContext context) async {
+Future<void> showProfileFollowersModal(BuildContext context) async {
   try {
     // Access the ProfileProvider
     final profileProvider =
@@ -174,7 +174,7 @@ Future<void> showFollowersModal(BuildContext context) async {
                                             ..loadUserById(followerId),
                                         ),
                                       ],
-                                      child: FollowerListItem(
+                                      child: ProfileFollowersListItem(
                                         followerId: followerId,
                                         onFollowStatusChanged:
                                             refreshParentProfile,
@@ -210,12 +210,12 @@ void _closeModal() {
   }
 }
 
-class FollowerListItem extends StatefulWidget {
+class ProfileFollowersListItem extends StatefulWidget {
   final String followerId;
   final VoidCallback onTap;
   final VoidCallback onFollowStatusChanged; // Add this
 
-  const FollowerListItem({
+  const ProfileFollowersListItem({
     required this.followerId,
     required this.onTap,
     required this.onFollowStatusChanged, // Add this
@@ -223,10 +223,10 @@ class FollowerListItem extends StatefulWidget {
   }) : super(key: key);
 
   @override
-  State<FollowerListItem> createState() => _FollowerListItemState();
+  State<ProfileFollowersListItem> createState() => _ProfileFollowersListItemState();
 }
 
-class _FollowerListItemState extends State<FollowerListItem> {
+class _ProfileFollowersListItemState extends State<ProfileFollowersListItem> {
   bool _mounted = true;
   late ProfileProvider _profileProvider;
   bool _isProviderInitialized = false;

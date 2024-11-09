@@ -188,47 +188,7 @@ class ProfilePlaylistListItem extends StatefulWidget {
 }
 
 class _ProfilePlaylistListItemState extends State<ProfilePlaylistListItem> {
-  final DatabaseHelper _db = DatabaseHelper.instance;
   bool _isHovering = false;
-  bool _isLiked = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _checkIfLiked();
-  }
-
-  Future<void> _checkIfLiked() async {
-    try {
-      final currentUser = await _db.getCurrentUser();
-      if (currentUser == null) return;
-
-      final playlist = await _db.getPlaylistById(widget.playlistId);
-      if (playlist == null) return;
-
-      setState(() {
-        _isLiked =
-            playlist.playlistLikeIds?.contains(currentUser.userId) ?? false;
-      });
-    } catch (e) {
-      print('Error checking like status: $e');
-    }
-  }
-
-  Future<void> _toggleLike() async {
-    try {
-      final currentUser = await _db.getCurrentUser();
-      if (currentUser == null) return;
-
-      final success =
-          await _db.togglePlaylistLike(widget.playlistId, currentUser.userId);
-      if (mounted) {
-        setState(() => _isLiked = success);
-      }
-    } catch (e) {
-      print('Error toggling like: $e');
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -472,28 +432,11 @@ class _ProfilePlaylistListItemState extends State<ProfilePlaylistListItem> {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          _buildLikeButton(),
+          SizedBox(width: 45),
           const SizedBox(width: 15),
           _buildDuration(),
           _buildMoreOptions(),
         ],
-      ),
-    );
-  }
-
-  Widget _buildLikeButton() {
-    if (!widget.isClicked && !_isHovering) {
-      return const SizedBox(width: 45);
-    }
-    return SizedBox(
-      width: 45,
-      child: IconButton(
-        icon: Icon(
-          _isLiked ? Icons.favorite : Icons.favorite_border_outlined,
-          color: _isLiked ? secondaryColor : primaryTextColor,
-          size: smallFontSize,
-        ),
-        onPressed: _toggleLike,
       ),
     );
   }
@@ -515,44 +458,64 @@ class _ProfilePlaylistListItemState extends State<ProfilePlaylistListItem> {
     final DatabaseHelper _databaseHelper = DatabaseHelper.instance;
     final widgetStateProvider2 =
         Provider.of<WidgetStateProvider2>(context, listen: false);
+
+    // Jika tidak hover dan tidak diklik, return SizedBox
     if (!_isHovering && !widget.isClicked) {
       return const SizedBox(width: 45);
     }
-    return Row(
-      children: [
-        SizedBox(
-          width: 45,
-          child: GestureDetector(
-            onTap: () async {
-              // Make onPressed async
-              // First fetch the playlist data
-              Playlist? playlist =
-                  await _databaseHelper.getPlaylistById(widget.playlistId);
 
-              if (playlist != null) {
-                WidgetsBinding.instance.addPostFrameCallback((_) {
-                  if (mounted) {
-                    widgetStateProvider2.changeWidget(
-                      PlaylistMenu(
-                        playlistName: widget.playlistName,
-                        playlistImageUrl: widget.playlistImageUrl,
-                        creatorName: playlist.creatorName ??
-                            '', // Now we can use the creator name
-                      ),
-                      'PlaylistMenu',
-                    );
+    // Tambahkan FutureBuilder untuk mengecek current user
+    return FutureBuilder<User?>(
+      future: _databaseHelper.getCurrentUser(),
+      builder: (context, snapshot) {
+        // Jika data belum ada atau error, return SizedBox
+        if (!snapshot.hasData || snapshot.data == null) {
+          return const SizedBox(width: 45);
+        }
+
+        // Cek apakah current user adalah creator
+        final isCreator = snapshot.data!.userId == widget.creatorId;
+
+        // Jika bukan creator, return SizedBox
+        if (!isCreator) {
+          return const SizedBox(width: 45);
+        }
+
+        // Jika creator, tampilkan icon more_horiz
+        return Row(
+          children: [
+            SizedBox(
+              width: 45,
+              child: GestureDetector(
+                onTap: () async {
+                  Playlist? playlist =
+                      await _databaseHelper.getPlaylistById(widget.playlistId);
+
+                  if (playlist != null) {
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      if (mounted) {
+                        widgetStateProvider2.changeWidget(
+                          PlaylistMenu(
+                            playlistName: widget.playlistName,
+                            playlistImageUrl: widget.playlistImageUrl,
+                            creatorName: playlist.creatorName ?? '',
+                          ),
+                          'PlaylistMenu',
+                        );
+                      }
+                    });
                   }
-                });
-              }
-            },
-            child: const Icon(
-              Icons.more_horiz,
-              color: primaryTextColor,
-              size: 24,
+                },
+                child: const Icon(
+                  Icons.more_horiz,
+                  color: primaryTextColor,
+                  size: 24,
+                ),
+              ),
             ),
-          ),
-        ),
-      ],
+          ],
+        );
+      },
     );
   }
 

@@ -64,6 +64,8 @@ class _SongMenuState extends State<SongMenu> {
   bool _isAddToPlaylistMenuVisible = false;
   bool _isCreatePlaylistVisible = false;
   bool _isHoveredSearchPlaylist = false;
+  String? _currentUserId;
+  String? _currentUserRole;
 
   final TextEditingController _searchPlaylistController =
       TextEditingController();
@@ -72,6 +74,7 @@ class _SongMenuState extends State<SongMenu> {
   void initState() {
     super.initState();
     _initializeSong();
+    _loadCurrentUserRole();
 
     // Add listener to controller
     _searchPlaylistController.addListener(() {
@@ -89,6 +92,30 @@ class _SongMenuState extends State<SongMenu> {
     _searchPlaylistController.removeListener(() {});
     // _searchPlaylistController.dispose();
     super.dispose();
+  }
+
+  // Modifikasi _loadCurrentUserRole untuk juga memuat userId
+  Future<void> _loadCurrentUserRole() async {
+    try {
+      final currentUser = await DatabaseHelper.instance.getCurrentUser();
+      if (currentUser != null && mounted) {
+        setState(() {
+          _currentUserRole = currentUser.role;
+          _currentUserId = currentUser.userId;
+        });
+      }
+    } catch (e) {
+      print('Error loading user data: $e');
+    }
+  }
+
+  // Tambahkan method untuk mengecek apakah user bisa memodifikasi lagu
+  bool _canModifySong() {
+    if (_currentUserRole == 'Admin') return true; // Admin bisa modifikasi semua lagu
+    if (_currentUserRole == 'Artist' && _currentUserId == widget.artistId) {
+      return true; // Artist hanya bisa modifikasi lagunya sendiri
+    }
+    return false;
   }
 
   void _initializeSong() {
@@ -368,119 +395,124 @@ class _SongMenuState extends State<SongMenu> {
                         ),
                       )
                     : SizedBox.shrink(),
-                const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 8.0),
-                  child: Divider(
-                    thickness: 1,
-                    color: primaryTextColor,
+                if (_canModifySong()) ...[
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 8.0),
+                    child: Divider(
+                      thickness: 1,
+                      color: primaryTextColor,
+                    ),
                   ),
-                ),
-                Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    hoverColor: primaryTextColor.withOpacity(0.1),
-                    onTap: () {
-                      final widgetStateProvider1 =
-                          Provider.of<WidgetStateProvider1>(context,
-                              listen: false);
-                      final widgetStateProvider2 =
-                          Provider.of<WidgetStateProvider2>(context,
-                              listen: false);
 
-                      WidgetsBinding.instance.addPostFrameCallback((_) {
-                        if (mounted) {
-                          widgetStateProvider1.changeWidget(
-                            EditSongContainer(
-                              onChangeWidget: (newWidget) {
-                                if (mounted) {
-                                  setState(() {
-                                    activeWidget2 = const ShowImage();
-                                  });
-                                }
-                              },
-                              songId: widget.songId,
-                              songUrl: widget.songUrl,
-                              songImageUrl: widget.songImageUrl,
-                              artistId: widget.artistId,
-                              artistSongIndex: widget.artistSongIndex,
-                              albumId: widget.albumId,
-                              songTitle: widget.songTitle,
-                              songDuration: widget.songDuration,
-                            ),
-                            'EditSongContainer',
-                          );
-                        }
-                      });
+                  // Edit Song button
+                  Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      hoverColor: primaryTextColor.withOpacity(0.1),
+                      onTap: () {
+                        final widgetStateProvider1 =
+                            Provider.of<WidgetStateProvider1>(context,
+                                listen: false);
+                        final widgetStateProvider2 =
+                            Provider.of<WidgetStateProvider2>(context,
+                                listen: false);
 
-                      WidgetsBinding.instance.addPostFrameCallback((_) {
-                        if (mounted) {
-                          widgetStateProvider2.changeWidget(
-                              const ShowDetailSong(), 'ShowDetailSong');
-                        }
-                      });
-                    },
-                    child: const Padding(
-                      padding: EdgeInsets.all(8.0),
-                      child: SizedBox(
-                        width: double.infinity,
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.edit,
-                              color: primaryTextColor,
-                            ),
-                            SizedBox(width: 12),
-                            Text(
-                              "Edit Song",
-                              style: TextStyle(
-                                color: primaryTextColor,
-                                fontWeight: FontWeight.bold,
+                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                          if (mounted) {
+                            widgetStateProvider1.changeWidget(
+                              EditSongContainer(
+                                onChangeWidget: (newWidget) {
+                                  if (mounted) {
+                                    setState(() {
+                                      activeWidget2 = const ShowImage();
+                                    });
+                                  }
+                                },
+                                songId: widget.songId,
+                                songUrl: widget.songUrl,
+                                songImageUrl: widget.songImageUrl,
+                                artistId: widget.artistId,
+                                artistSongIndex: widget.artistSongIndex,
+                                albumId: widget.albumId,
+                                songTitle: widget.songTitle,
+                                songDuration: widget.songDuration,
                               ),
-                            ),
-                          ],
+                              'EditSongContainer',
+                            );
+                          }
+                        });
+
+                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                          if (mounted) {
+                            widgetStateProvider2.changeWidget(
+                                const ShowDetailSong(), 'ShowDetailSong');
+                          }
+                        });
+                      },
+                      child: const Padding(
+                        padding: EdgeInsets.all(8.0),
+                        child: SizedBox(
+                          width: double.infinity,
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.edit,
+                                color: primaryTextColor,
+                              ),
+                              SizedBox(width: 12),
+                              Text(
+                                "Edit Song",
+                                style: TextStyle(
+                                  color: primaryTextColor,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ),
                   ),
-                ),
-                Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    hoverColor: primaryTextColor.withOpacity(0.1),
-                    onTap: () {
-                      _deleteSong(
-                        widget.songId,
-                        widget.songUrl,
-                        widget.songImageUrl,
-                        widget.artistSongIndex,
-                      );
-                      // print('ini adalah widget id ${widget.songId}');
-                    },
-                    child: const Padding(
-                      padding: EdgeInsets.all(8.0),
-                      child: SizedBox(
-                        width: double.infinity,
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.delete,
-                              color: primaryTextColor,
-                            ),
-                            SizedBox(width: 12),
-                            Text(
-                              "Delete Song",
-                              style: TextStyle(
+
+                  // Delete Song button
+                  Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      hoverColor: primaryTextColor.withOpacity(0.1),
+                      onTap: () {
+                        _deleteSong(
+                          widget.songId,
+                          widget.songUrl,
+                          widget.songImageUrl,
+                          widget.artistSongIndex,
+                        );
+                      },
+                      child: const Padding(
+                        padding: EdgeInsets.all(8.0),
+                        child: SizedBox(
+                          width: double.infinity,
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.delete,
                                 color: primaryTextColor,
-                                fontWeight: FontWeight.bold,
                               ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ],
+                              SizedBox(width: 12),
+                              Text(
+                                "Delete Song",
+                                style: TextStyle(
+                                  color: primaryTextColor,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ),
                   ),
-                ),
+                ],
               ],
             ),
           ),

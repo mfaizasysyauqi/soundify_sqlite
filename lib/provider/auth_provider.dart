@@ -5,8 +5,10 @@ import 'package:soundify/models/user.dart';
 
 class AuthProvider with ChangeNotifier {
   User? _currentUser;
-  String? get currentUserId => _currentUser?.userId;
-  
+  String? _currentUserRole;
+
+  String? get currentUserId =>  _currentUser?.userId;
+  String? get currentUserRole => _currentUserRole;
   Future<void> initializeUser() async {
     _currentUser = await DatabaseHelper.instance.getCurrentUser();
     notifyListeners();
@@ -24,5 +26,17 @@ class AuthProvider with ChangeNotifier {
     notifyListeners();
   }
 
+  // Method untuk mendapatkan role user saat ini
+  Future<String?> getCurrentUserRole() async {
+    try {
+      final user = await DatabaseHelper.instance.getCurrentUser();
+      _currentUserRole = user?.role;
+      notifyListeners();
+      return _currentUserRole;
+    } catch (e) {
+      print('Error getting user role: $e');
+      return null;
+    }
+  }
   bool get isAuthenticated => _currentUser != null;
 }

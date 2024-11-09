@@ -12,7 +12,7 @@ import 'package:provider/provider.dart';
 
 OverlayEntry? _overlayEntry;
 
-Future<void> showFollowingModal(BuildContext context) async {
+Future<void> showProfileFollowingModal(BuildContext context) async {
   try {
     // Access the ProfileProvider
     final profileProvider =
@@ -172,7 +172,7 @@ Future<void> showFollowingModal(BuildContext context) async {
                                             ..loadUserById(followingId),
                                         ),
                                       ],
-                                      child: FollowingListItem(
+                                      child: ProfileFollowingListItem(
                                         followingId: followingId,
                                         onFollowStatusChanged:
                                             refreshParentProfile,
@@ -209,12 +209,12 @@ void _closeModal() {
   }
 }
 
-class FollowingListItem extends StatefulWidget {
+class ProfileFollowingListItem extends StatefulWidget {
   final String followingId;
   final VoidCallback onTap;
   final VoidCallback onFollowStatusChanged; // Add this
 
-  const FollowingListItem({
+  const ProfileFollowingListItem({
     required this.followingId,
     required this.onTap,
     required this.onFollowStatusChanged, // Add this
@@ -222,10 +222,10 @@ class FollowingListItem extends StatefulWidget {
   }) : super(key: key);
 
   @override
-  State<FollowingListItem> createState() => _FollowingListItemState();
+  State<ProfileFollowingListItem> createState() => _ProfileFollowingListItemState();
 }
 
-class _FollowingListItemState extends State<FollowingListItem> {
+class _ProfileFollowingListItemState extends State<ProfileFollowingListItem> {
   bool _mounted = true;
   late ProfileProvider _profileProvider;
   bool _isProviderInitialized = false;

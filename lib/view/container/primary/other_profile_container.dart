@@ -15,6 +15,7 @@ import 'package:soundify/view/widget/profile/profile_album_list.dart';
 import 'package:soundify/view/widget/profile/profile_followers_list.dart';
 import 'package:soundify/view/widget/profile/profile_following_list.dart';
 import 'package:soundify/view/widget/profile/profile_playlist_list.dart';
+import 'package:soundify/view/widget/profile/profile_select_role.dart';
 import 'package:soundify/view/widget/song_list.dart';
 
 class OtherProfileContainer extends StatefulWidget {
@@ -44,6 +45,7 @@ class _OtherProfileContainerState extends State<OtherProfileContainer> {
   bool _isHavePlaylist = false;
   bool _isLoading = false;
   bool _isFollowing = false;
+  String? _currentUserRole;
 
   @override
   void initState() {
@@ -54,6 +56,21 @@ class _OtherProfileContainerState extends State<OtherProfileContainer> {
         _initializeAsync();
       }
     });
+    _loadCurrentUserData();
+  }
+
+  // Tambahkan method untuk memuat data current user
+  Future<void> _loadCurrentUserData() async {
+    try {
+      final currentUser = await DatabaseHelper.instance.getCurrentUser();
+      if (currentUser != null && mounted) {
+        setState(() {
+          _currentUserRole = currentUser.role;
+        });
+      }
+    } catch (e) {
+      print('Error loading current user data: $e');
+    }
   }
 
   Future<void> _initializeAsync() async {
@@ -240,7 +257,7 @@ class _OtherProfileContainerState extends State<OtherProfileContainer> {
                                       ),
                                     ),
                                     Text(
-                                      profileProvider.username,
+                                      'Bio',
                                       overflow: TextOverflow.ellipsis,
                                       style: const TextStyle(
                                         color: quaternaryTextColor,
@@ -588,7 +605,9 @@ class _OtherProfileContainerState extends State<OtherProfileContainer> {
           const SizedBox(height: 10),
           Text('@${profileProvider.username}',
               style: const TextStyle(
-                  color: primaryTextColor, fontSize: smallFontSize)),
+                color: primaryTextColor,
+                fontSize: smallFontSize,
+              )),
           Text(profileProvider.fullName,
               style: const TextStyle(
                   color: primaryTextColor,
@@ -598,7 +617,7 @@ class _OtherProfileContainerState extends State<OtherProfileContainer> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               GestureDetector(
-                onTap: () => showFollowersModal(
+                onTap: () => showProfileFollowersModal(
                   context,
                 ),
                 child: Text(
@@ -617,7 +636,7 @@ class _OtherProfileContainerState extends State<OtherProfileContainer> {
                 ),
               ),
               GestureDetector(
-                onTap: () => showFollowingModal(context),
+                onTap: () => showProfileFollowingModal(context),
                 child: Text(
                   'Following: ${profileProvider.following.length}',
                   style: const TextStyle(
@@ -626,20 +645,27 @@ class _OtherProfileContainerState extends State<OtherProfileContainer> {
                   ),
                 ),
               ),
-              Text(
-                ' | ',
-                style: const TextStyle(
-                  color: primaryTextColor,
-                  fontSize: smallFontSize,
+
+              // Tampilkan role hanya jika current user adalah Admin
+              if (_currentUserRole == 'Admin') ...[
+                Text(
+                  ' | ',
+                  style: const TextStyle(
+                    color: primaryTextColor,
+                    fontSize: smallFontSize,
+                  ),
                 ),
-              ),
-              Text(
-                'Role: ${profileProvider.currentUser?.role ?? ""}',
-                style: const TextStyle(
-                  color: primaryTextColor,
-                  fontSize: smallFontSize,
+                GestureDetector(
+                  onTap: () => showProfileSelectRoleModal(context),
+                  child: Text(
+                    'Role: ${profileProvider.currentUser?.role ?? ""}',
+                    style: const TextStyle(
+                      color: primaryTextColor,
+                      fontSize: smallFontSize,
+                    ),
+                  ),
                 ),
-              ),
+              ],
             ],
           ),
           if (profileProvider.bio.isNotEmpty)
@@ -744,7 +770,7 @@ class _OtherProfileContainerState extends State<OtherProfileContainer> {
                 mainAxisAlignment: MainAxisAlignment.start,
                 children: [
                   GestureDetector(
-                    onTap: () => showFollowersModal(context),
+                    onTap: () => showProfileFollowersModal(context),
                     child: Text(
                       'Followers: ${profileProvider.followers.length}',
                       style: const TextStyle(
@@ -761,7 +787,7 @@ class _OtherProfileContainerState extends State<OtherProfileContainer> {
                     ),
                   ),
                   GestureDetector(
-                    onTap: () => showFollowingModal(context),
+                    onTap: () => showProfileFollowingModal(context),
                     child: Text(
                       'Following: ${profileProvider.following.length}',
                       style: const TextStyle(
@@ -770,20 +796,26 @@ class _OtherProfileContainerState extends State<OtherProfileContainer> {
                       ),
                     ),
                   ),
-                  Text(
-                    ' | ',
-                    style: const TextStyle(
-                      color: primaryTextColor,
-                      fontSize: smallFontSize,
+                  // Tampilkan role hanya jika current user adalah Admin
+                  if (_currentUserRole == 'Admin') ...[
+                    Text(
+                      ' | ',
+                      style: const TextStyle(
+                        color: primaryTextColor,
+                        fontSize: smallFontSize,
+                      ),
                     ),
-                  ),
-                  Text(
-                    'Role: ${profileProvider.currentUser?.role ?? ""}',
-                    style: const TextStyle(
-                      color: primaryTextColor,
-                      fontSize: smallFontSize,
+                    GestureDetector(
+                      onTap: () => showProfileSelectRoleModal(context),
+                      child: Text(
+                        'Role: ${profileProvider.currentUser?.role ?? ""}',
+                        style: const TextStyle(
+                          color: primaryTextColor,
+                          fontSize: smallFontSize,
+                        ),
+                      ),
                     ),
-                  ),
+                  ],
                 ],
               ),
               if (profileProvider.bio.isNotEmpty)

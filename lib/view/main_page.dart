@@ -43,6 +43,7 @@ final DatabaseHelper _databaseHelper = DatabaseHelper.instance;
 class _MainPageState extends State<MainPage> {
   bool _isHoveredSearch = false;
   String? _currentUserId;
+  String? _currentUserRole;
 
   @override
   void initState() {
@@ -86,13 +87,13 @@ class _MainPageState extends State<MainPage> {
   }
 
   // Method untuk memuat current user dari SQLite
-  // Method untuk memuat current user dari SQLite
   Future<void> _loadCurrentUser() async {
     try {
       final user = await DatabaseHelper.instance.getCurrentUser();
       if (user != null && mounted) {
         setState(() {
           _currentUserId = user.userId;
+          _currentUserRole = user.role; // Tambahkan ini
         });
 
         // Load user profile data after setting currentUserId
@@ -239,46 +240,48 @@ class _MainPageState extends State<MainPage> {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    IntrinsicWidth(
-                      child: TextButton(
-                        onPressed: () {
-                          setState(() {
-                            Provider.of<WidgetStateProvider1>(context,
-                                    listen: false)
-                                .changeWidget(
-                              AddSongContainer(
-                                onChangeWidget: (newWidget) {
-                                  setState(() {
-                                    activeWidget2 =
-                                        newWidget; // Ganti widget aktif
-                                  });
-                                },
-                              ),
-                              'Add Song Container',
-                            );
-
-                            // activeWidget2 = const ShowDetailSong();
-                          });
-                          _closeModal(); // Tutup modal setelah action
-                        },
-                        child: const Row(
-                          children: [
-                            Icon(
-                              Icons.add,
-                              color: primaryTextColor,
-                            ),
-                            SizedBox(width: 12),
-                            Text(
-                              "Add Song",
-                              style: TextStyle(
+                    // Hanya tampilkan Add Song jika role adalah artist atau admin
+                    if (_currentUserRole == 'Artist' ||
+                        _currentUserRole == 'Admin') ...[
+                      const SizedBox(height: 8),
+                      IntrinsicWidth(
+                        child: TextButton(
+                          onPressed: () {
+                            setState(() {
+                              Provider.of<WidgetStateProvider1>(context,
+                                      listen: false)
+                                  .changeWidget(
+                                AddSongContainer(
+                                  onChangeWidget: (newWidget) {
+                                    setState(() {
+                                      activeWidget2 = newWidget;
+                                    });
+                                  },
+                                ),
+                                'Add Song Container',
+                              );
+                            });
+                            _closeModal();
+                          },
+                          child: const Row(
+                            children: [
+                              Icon(
+                                Icons.add,
                                 color: primaryTextColor,
-                                fontWeight: FontWeight.bold,
                               ),
-                            ),
-                          ],
+                              SizedBox(width: 12),
+                              Text(
+                                "Add Song",
+                                style: TextStyle(
+                                  color: primaryTextColor,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
-                    ),
+                    ],
                   ],
                 ),
               ),

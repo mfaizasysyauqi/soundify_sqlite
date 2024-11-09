@@ -15,6 +15,7 @@ import 'package:soundify/view/widget/profile/profile_album_list.dart';
 import 'package:soundify/view/widget/profile/profile_followers_list.dart';
 import 'package:soundify/view/widget/profile/profile_following_list.dart';
 import 'package:soundify/view/widget/profile/profile_playlist_list.dart';
+import 'package:soundify/view/widget/profile/profile_select_role.dart';
 import 'package:soundify/view/widget/song_list.dart';
 
 class PersonalProfileContainer extends StatefulWidget {
@@ -48,6 +49,10 @@ class _PersonalProfileContainerState extends State<PersonalProfileContainer> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Provider.of<ProfileProvider>(context, listen: false)
+          .setUserId(widget.userId);
+    });
     _initializeAsync();
   }
 
@@ -223,7 +228,7 @@ class _PersonalProfileContainerState extends State<PersonalProfileContainer> {
                                       ),
                                     ),
                                     Text(
-                                      profileProvider.username,
+                                      'Bio',
                                       overflow: TextOverflow.ellipsis,
                                       style: const TextStyle(
                                         color: quaternaryTextColor,
@@ -514,7 +519,7 @@ class _PersonalProfileContainerState extends State<PersonalProfileContainer> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               GestureDetector(
-                onTap: () => showFollowersModal(
+                onTap: () => showProfileFollowersModal(
                   context,
                 ),
                 child: Text(
@@ -533,7 +538,7 @@ class _PersonalProfileContainerState extends State<PersonalProfileContainer> {
                 ),
               ),
               GestureDetector(
-                onTap: () => showFollowingModal(context),
+                onTap: () => showProfileFollowingModal(context),
                 child: Text(
                   'Following: ${profileProvider.following.length}',
                   style: const TextStyle(
@@ -549,11 +554,14 @@ class _PersonalProfileContainerState extends State<PersonalProfileContainer> {
                   fontSize: smallFontSize,
                 ),
               ),
-              Text(
-                'Role: ${profileProvider.currentUser?.role ?? ""}',
-                style: const TextStyle(
-                  color: primaryTextColor,
-                  fontSize: smallFontSize,
+              GestureDetector(
+                onTap: () => showProfileSelectRoleModal(context),
+                child: Text(
+                  'Role: ${profileProvider.currentUser?.role ?? ""}',
+                  style: const TextStyle(
+                    color: primaryTextColor,
+                    fontSize: smallFontSize,
+                  ),
                 ),
               ),
             ],
@@ -640,7 +648,7 @@ class _PersonalProfileContainerState extends State<PersonalProfileContainer> {
                 mainAxisAlignment: MainAxisAlignment.start,
                 children: [
                   GestureDetector(
-                    onTap: () => showFollowersModal(context),
+                    onTap: () => showProfileFollowersModal(context),
                     child: Text(
                       'Followers: ${profileProvider.followers.length}',
                       style: const TextStyle(
@@ -657,7 +665,7 @@ class _PersonalProfileContainerState extends State<PersonalProfileContainer> {
                     ),
                   ),
                   GestureDetector(
-                    onTap: () => showFollowingModal(context),
+                    onTap: () => showProfileFollowingModal(context),
                     child: Text(
                       'Following: ${profileProvider.following.length}',
                       style: const TextStyle(
@@ -673,11 +681,14 @@ class _PersonalProfileContainerState extends State<PersonalProfileContainer> {
                       fontSize: smallFontSize,
                     ),
                   ),
-                  Text(
-                    'Role: ${profileProvider.currentUser?.role ?? ""}',
-                    style: const TextStyle(
-                      color: primaryTextColor,
-                      fontSize: smallFontSize,
+                  GestureDetector(
+                    onTap: () => showProfileSelectRoleModal(context),
+                    child: Text(
+                      'Role: ${profileProvider.currentUser?.role ?? ""}',
+                      style: const TextStyle(
+                        color: primaryTextColor,
+                        fontSize: smallFontSize,
+                      ),
                     ),
                   ),
                 ],
@@ -1181,6 +1192,8 @@ class _PersonalProfileContainerState extends State<PersonalProfileContainer> {
   void didUpdateWidget(PersonalProfileContainer oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.userId != oldWidget.userId) {
+      Provider.of<ProfileProvider>(context, listen: false)
+          .setUserId(widget.userId);
       _resetState();
       _initializeAsync();
     }
