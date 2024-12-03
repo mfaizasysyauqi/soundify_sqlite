@@ -1,3 +1,4 @@
+// database_helper.dart
 import 'dart:convert';
 import 'dart:io';
 
@@ -10,7 +11,6 @@ import 'package:soundify/models/song.dart';
 import 'package:soundify/models/user.dart';
 import 'file_storage_helper.dart'; // Import FileStorageHelper
 
-// database_helper.dart
 class DatabaseHelper {
   static final DatabaseHelper instance = DatabaseHelper._init();
   static Database? _database;
@@ -130,7 +130,8 @@ class DatabaseHelper {
       userLikedPlaylists TEXT,
       lastListenedSongId TEXT,
       lastVolumeLevel REAL,
-      premiumExpiryDate TEXT
+      premiumExpiryDate TEXT,
+      royalty INTEGER DEFAULT 0
     )
   ''');
 
@@ -328,6 +329,38 @@ class DatabaseHelper {
     }
 
     return songs;
+  }
+
+  Future<List<Song>> getSongsByArtistId(String artistId) async {
+    Database db = await instance.database;
+    final List<Map<String, dynamic>> maps = await db.query(
+      'songs',
+      where: 'artistId = ?',
+      whereArgs: [artistId],
+    );
+
+    List<Song> artistSongs = [];
+    for (var map in maps) {
+      Song song = Song.fromMap(map);
+
+      // Get artist details
+      User? artist = await getUserByArtistId(song.artistId);
+      if (artist != null) {
+        song.artistName = artist.fullName;
+        song.profileImageUrl = artist.profileImageUrl;
+        song.bioImageUrl = artist.bioImageUrl;
+      }
+
+      // Get album details using albumId
+      Album? album = await getAlbumById(song.albumId);
+      if (album != null) {
+        song.albumName = album.albumName;
+      }
+
+      artistSongs.add(song);
+    }
+
+    return artistSongs;
   }
 
 // Define method to get album by albumId
@@ -780,10 +813,9 @@ class DatabaseHelper {
     final db = await database;
     await db.insert(
       'users',
-      user,
+      {...user, 'royalty': user['royalty'] ?? 0},
       conflictAlgorithm: ConflictAlgorithm.replace,
     );
-    // Also save to JSON file
     await FileStorageHelper.instance.addUser(user);
   }
 

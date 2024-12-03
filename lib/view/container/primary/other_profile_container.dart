@@ -6,9 +6,7 @@ import 'package:soundify/database/database_helper.dart';
 import 'package:soundify/models/user.dart';
 import 'package:soundify/provider/profile_provider.dart';
 import 'package:soundify/provider/widget_size_provider.dart';
-import 'package:soundify/provider/widget_state_provider_2.dart';
 import 'package:soundify/utils/sticky_header_delegate.dart';
-import 'package:soundify/view/container/secondary/menu/profile_menu.dart';
 import 'package:soundify/view/style/style.dart';
 import 'package:provider/provider.dart';
 import 'package:soundify/view/widget/profile/profile_album_list.dart';
@@ -846,21 +844,9 @@ class _OtherProfileContainerState extends State<OtherProfileContainer> {
   }
 
   Widget _buildActionButtons({bool useRow = false}) {
-    final widgetStateProvider2 =
-        Provider.of<WidgetStateProvider2>(context, listen: false);
     final List<Widget> buttons = [
-      IconButton(
-        icon: const Icon(Icons.more_horiz, color: primaryTextColor),
-        onPressed: () {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted) {
-              widgetStateProvider2.changeWidget(
-                ProfileMenu(),
-                'PlaylistMenu',
-              );
-            }
-          });
-        },
+      SizedBox(
+        height: 28,
       ),
       if (_isHaveSong)
         IconButton(

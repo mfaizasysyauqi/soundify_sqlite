@@ -602,6 +602,156 @@ class _ProfileMenuState extends State<ProfileMenu> {
     }
   }
 
+  void _showRoyaltyModal(BuildContext context) {
+    final profileProvider =
+        Provider.of<ProfileProvider>(context, listen: false);
+
+    // Calculate total plays and royalty
+    Future<double> calculateRoyalty() async {
+      final dbHelper = DatabaseHelper.instance;
+      final songs =
+          await dbHelper.getSongsByArtist(profileProvider.currentUser!.userId);
+
+      double totalPlays = 0;
+      for (var song in songs) {
+        // Start from -1 to offset the initial value
+        totalPlays += ((song.playedIds?.length ?? 0) - 1).toDouble();
+      }
+
+      // Convert plays to rupiah (100 plays = 1000 rupiah)
+      double royalty = (totalPlays / 100) * 1000;
+      return royalty;
+    }
+
+    _overlayEntry = OverlayEntry(
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) {
+          return Stack(
+            children: [
+              Positioned.fill(
+                child: GestureDetector(
+                  onTap: () {
+                    _closeModal();
+                  },
+                  child: Container(
+                    color: Colors.black.withOpacity(0.5),
+                  ),
+                ),
+              ),
+              Center(
+                child: Material(
+                  color: Colors.transparent,
+                  child: Container(
+                    width: 480,
+                    height: 273,
+                    padding: const EdgeInsets.all(16.0),
+                    decoration: BoxDecoration(
+                      color: tertiaryColor,
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.3),
+                          blurRadius: 10,
+                          offset: const Offset(0, 5),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        // Header
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text(
+                              'Royalty',
+                              style: TextStyle(
+                                color: primaryTextColor,
+                                fontSize: 24,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            GestureDetector(
+                              onTap: () {
+                                _closeModal();
+                              },
+                              child: const Icon(
+                                Icons.close,
+                                color: primaryTextColor,
+                              ),
+                            ),
+                          ],
+                        ),
+
+                        const SizedBox(height: 16),
+                        // Content
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              child: Column(
+                                children: [
+                                  const SizedBox(height: 10),
+                                  FutureBuilder<double>(
+                                    future: calculateRoyalty(),
+                                    builder: (context, snapshot) {
+                                      String royaltyText = 'Calculating...';
+                                      if (snapshot.hasData) {
+                                        royaltyText =
+                                            'Rp ${snapshot.data!.toStringAsFixed(2)}';
+                                      }
+                                      return TextFormField(
+                                        readOnly: true,
+                                        controller: TextEditingController(
+                                            text: royaltyText),
+                                        style: const TextStyle(
+                                            color: primaryTextColor),
+                                        decoration: const InputDecoration(
+                                          contentPadding: EdgeInsets.all(8),
+                                          labelText: 'Your Current Royalty',
+                                          labelStyle: TextStyle(
+                                              color: primaryTextColor),
+                                          floatingLabelBehavior:
+                                              FloatingLabelBehavior.always,
+                                          border: OutlineInputBorder(
+                                            borderSide: BorderSide(
+                                                color: primaryTextColor),
+                                          ),
+                                          focusedBorder: OutlineInputBorder(
+                                            borderSide: BorderSide(
+                                                color: primaryTextColor),
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                  const SizedBox(height: 13),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        Text(
+                          'Silakan menghubungi Admin melalui kontak resmi yang tersedia untuk proses pencairan dana royalti lagu Anda',
+                          style: TextStyle(
+                            color: primaryTextColor,
+                          ),
+                        )
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+
+    Overlay.of(context).insert(_overlayEntry!); // Show overlay
+  }
+
   void _closeModal() {
     if (_overlayEntry != null) {
       _overlayEntry!.remove();
@@ -631,6 +781,7 @@ class _ProfileMenuState extends State<ProfileMenu> {
             ),
             buildEditProfile(profileProvider),
             buildEditBio(profileProvider),
+            buildRoyalty(profileProvider),
           ],
         );
       },
@@ -786,6 +937,52 @@ class _ProfileMenuState extends State<ProfileMenu> {
                   SizedBox(width: 12),
                   Text(
                     "Edit Bio",
+                    style: TextStyle(
+                      color: primaryTextColor,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ]),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget buildRoyalty(ProfileProvider profileProvider) {
+    // Only show royalty option for Artist or Admin
+    if (profileProvider.currentUser?.role != 'Artist' &&
+        profileProvider.currentUser?.role != 'Admin') {
+      return const SizedBox
+          .shrink(); // Returns empty widget if not Artist/Admin
+    }
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        hoverColor: primaryTextColor.withOpacity(0.1),
+        onTap: () {
+          setState(() {});
+          _closeModal();
+          _showRoyaltyModal(context);
+        },
+        child: Padding(
+          padding: const EdgeInsets.only(
+              left: 11, right: 8.0, top: 10.0, bottom: 10.0),
+          child: SizedBox(
+            width: double.infinity,
+            child: const Row(children: [
+              Row(
+                children: [
+                  Icon(
+                    Icons.attach_money,
+                    color: primaryTextColor,
+                  ),
+                  SizedBox(width: 12),
+                  Text(
+                    "Royalty",
                     style: TextStyle(
                       color: primaryTextColor,
                       fontWeight: FontWeight.bold,

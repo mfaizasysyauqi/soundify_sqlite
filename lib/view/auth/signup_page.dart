@@ -75,6 +75,7 @@ class _SignUpPageState extends State<SignUpPage> {
         lastListenedSongId: '',
         lastVolumeLevel: 0.5,
         premiumExpiryDate: '',
+        royalty: 0,
       );
 
       // Save to SQLite

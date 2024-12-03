@@ -33,18 +33,37 @@ class _BottomContainerState extends State<BottomContainer> {
   List<Song> _shuffledPlaylist = [];
   bool _isHoveredSkipPrevious = false;
   bool _isHoveredSkipNext = false;
+  late StreamSubscription _positionSubscription;
+  late StreamSubscription _playerStateSubscription;
+  late StreamSubscription _playerCompleteSubscription;
 
   @override
   void initState() {
     super.initState();
     _initializeAudioPlayer();
-    // Jalankan _loadUserPreferences secara terpisah
+    _setupStreamSubscriptions();
     _loadUserPreferences().then((_) {
-      if (mounted) {
-        setState(() {}); // Update UI jika perlu setelah preferences dimuat
-      }
+      if (mounted) setState(() {});
     });
     _loadPlaylist();
+  }
+
+  void _setupStreamSubscriptions() {
+    _positionSubscription = _audioPlayer.onPositionChanged.listen((position) {
+      if (!mounted) return;
+      setState(() => _currentPosition = position.inSeconds.toDouble());
+    });
+
+    _playerStateSubscription =
+        _audioPlayer.onPlayerStateChanged.listen((playerState) {
+      if (!mounted) return;
+      setState(() => _isPlaying = playerState == PlayerState.playing);
+    });
+
+    _playerCompleteSubscription = _audioPlayer.onPlayerComplete.listen((_) {
+      if (!mounted) return;
+      _onSongComplete();
+    });
   }
 
   Future<void> _loadPlaylist() async {
@@ -74,19 +93,18 @@ class _BottomContainerState extends State<BottomContainer> {
 
   Future<void> _setupAudioPlayerListeners() async {
     _audioPlayer.onPositionChanged.listen((position) {
-      if (mounted) {
-        setState(() => _currentPosition = position.inSeconds.toDouble());
-      }
+      if (!mounted) return;
+      setState(() => _currentPosition = position.inSeconds.toDouble());
     });
 
     _audioPlayer.onPlayerStateChanged.listen((playerState) {
-      if (mounted) {
-        setState(() => _isPlaying = playerState == PlayerState.playing);
-      }
+      if (!mounted) return;
+      setState(() => _isPlaying = playerState == PlayerState.playing);
     });
 
     // Add listener for song completion
     _audioPlayer.onPlayerComplete.listen((_) {
+      if (!mounted) return;
       _onSongComplete();
     });
   }
@@ -146,30 +164,20 @@ class _BottomContainerState extends State<BottomContainer> {
 
   Future<void> _loadUserPreferences() async {
     final songProvider = Provider.of<SongProvider>(context, listen: false);
-    Map<String, dynamic> prefs = await songProvider.loadUserPreferences();
-
-    if (prefs.containsKey('lastVolumeLevel')) {
-      var lastVolumeLevel = prefs['lastVolumeLevel'];
-      double volume;
-
-      if (lastVolumeLevel is double) {
-        volume = lastVolumeLevel;
-      } else if (lastVolumeLevel is int) {
-        volume = lastVolumeLevel.toDouble();
-      } else {
-        volume = 0.5; // default value
-      }
-
-      // Set volume tanpa menggunakan setState
-      _currentVolume = volume;
-      await _audioPlayer.setVolume(volume);
-
-      // Update UI jika perlu
-      if (mounted) {
-        setState(() {
-          // Tidak ada operasi async di sini
-          _currentVolume = volume;
-        });
+    int retryCount = 0;
+    while (retryCount < 3) {
+      try {
+        Map<String, dynamic> prefs = await songProvider.loadUserPreferences();
+        if (prefs.containsKey('lastVolumeLevel')) {
+          _currentVolume = prefs['lastVolumeLevel'] is double
+              ? prefs['lastVolumeLevel']
+              : (prefs['lastVolumeLevel'] as int).toDouble();
+          await _audioPlayer.setVolume(_currentVolume);
+        }
+        break;
+      } catch (e) {
+        retryCount++;
+        await Future.delayed(Duration(milliseconds: 100 * retryCount));
       }
     }
   }
@@ -361,6 +369,22 @@ class _BottomContainerState extends State<BottomContainer> {
   }
 
   Future<void> _onSongComplete() async {
+    final songProvider = Provider.of<SongProvider>(context, listen: false);
+    final dbHelper = DatabaseHelper.instance;
+    final currentUser = await dbHelper.getCurrentUser();
+
+    if (currentUser != null) {
+      final song = await dbHelper.getSongById(songProvider.songId);
+
+      if (song != null) {
+        // Simply add the userId to playedIds without checking for duplicates
+        List<String> playedIds = song.playedIds ?? [];
+        playedIds.add(currentUser.userId);
+
+        await dbHelper.updateSong(song.copyWith(playedIds: playedIds));
+      }
+    }
+
     if (!_isRepeatMode) {
       await _skipToNextSong();
     }
@@ -661,8 +685,11 @@ class _BottomContainerState extends State<BottomContainer> {
   }
 
   @override
-  Future<void> dispose() async {
-    await _audioPlayer.dispose();
+  void dispose() {
+    _positionSubscription.cancel();
+    _playerStateSubscription.cancel();
+    _playerCompleteSubscription.cancel();
+    _audioPlayer.dispose();
     super.dispose();
   }
 }

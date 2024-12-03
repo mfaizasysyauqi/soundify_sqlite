@@ -16,6 +16,7 @@ class User {
   String lastListenedSongId;
   double lastVolumeLevel;
   String premiumExpiryDate;
+  int royalty;
 
   User({
     required this.userId,
@@ -35,6 +36,7 @@ class User {
     this.lastListenedSongId = '',
     this.lastVolumeLevel = 0.5,
     this.premiumExpiryDate = '',
+    this.royalty = 0,
   });
 
   User copyWith({
@@ -55,6 +57,7 @@ class User {
     String? lastListenedSongId,
     double? lastVolumeLevel,
     String? premiumExpiryDate,
+    int? royalty,
   }) {
     return User(
       userId: userId ?? this.userId,
@@ -74,6 +77,7 @@ class User {
       lastListenedSongId: lastListenedSongId ?? this.lastListenedSongId,
       lastVolumeLevel: lastVolumeLevel ?? this.lastVolumeLevel,
       premiumExpiryDate: premiumExpiryDate ?? this.premiumExpiryDate,
+      royalty: royalty ?? this.royalty,
     );
   }
 
@@ -116,6 +120,7 @@ class User {
       lastListenedSongId: map['lastListenedSongId'] ?? '',
       lastVolumeLevel: (map['lastVolumeLevel'] ?? 0.5) as double,
       premiumExpiryDate: map['premium'] ?? 'premiumExpiryDate',
+      royalty: map['royalty'] ?? 0,
     );
   }
 
@@ -147,6 +152,7 @@ class User {
       'lastListenedSongId': lastListenedSongId,
       'lastVolumeLevel': lastVolumeLevel,
       'premiumExpiryDate': premiumExpiryDate,
+      'royalty': royalty,
     };
   }
 }
